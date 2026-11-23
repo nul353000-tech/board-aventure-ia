@@ -44,6 +44,10 @@ jobs:
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
+          CERT_INFO="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey)"
+          echo "$CERT_INFO" | grep "SHA256:"
+          EXPECTED_CERT="0D:1F:83:3E:9D:11:8D:38:C0:1E:65:95:9F:E3:01:C5:6C:27:2A:C3:7F:C6:E5:71:AA:C7:94:6E:C3:7C:1A:2D"
+          echo "$CERT_INFO" | grep -F "$EXPECTED_CERT" >/dev/null || { echo "::error::Unexpected signing certificate; refusing to publish an incompatible APK."; exit 1; }
           keytool -list -v -keystore "$HOME/.android/debug.keystore" \
             -storepass android -alias androiddebugkey | grep "SHA256:"
       - uses: gradle/actions/setup-gradle@v4
