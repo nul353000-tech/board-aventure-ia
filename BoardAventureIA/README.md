@@ -28,7 +28,7 @@ Le workflow GitHub Actions construit l'APK debug, crée une clé de signature pe
 - Le code de politique d'action refuse actuellement toutes les actions ; aucun clic automatique n'est implémenté.
 - Android peut exiger une autorisation manuelle des paramètres restreints pour activer un service d'accessibilité installé depuis un APK externe. L'application ne peut pas supprimer cette protection.
 - Une désinstallation efface les préférences locales et peut rendre la clé OpenRouter à ressaisir.
-- Le comportement doit encore être testé sur Android 17 / Pixel 10a.
+- Le comportement doit encore être testé sur Android 17 / Pixel 10a. La compilation CI ne remplace pas ce test matériel.
 
 ## Sécurité
 Aucun achat en argent réel ni aucune dépense automatique ne doit être exécuté. Les coordonnées tactiles ne doivent pas être activées avant calibration et validation humaine sur les écrans réels.
