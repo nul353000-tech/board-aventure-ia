@@ -37,11 +37,21 @@ class GameAssistService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
-        lastForegroundPackage = pkg
-        if (pkg == ActionPolicy.TARGET_PACKAGE) {
+        val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+        val gameIsActive = pkg == ActionPolicy.TARGET_PACKAGE ||
+            activePackage == ActionPolicy.TARGET_PACKAGE
+        if (gameIsActive) {
+            lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
             showFloatingPanel()
             statusView?.text = "Jeu Board Aventure détecté"
-        } else {
+            return
+        }
+        // Ignore child/content events from keyboards, dialogs and system overlays.
+        // Hide only when Android reports a genuine foreground-window transition.
+        val isWindowTransition = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        if (isWindowTransition) {
+            lastForegroundPackage = activePackage ?: pkg
             removeFloatingPanel()
         }
     }
