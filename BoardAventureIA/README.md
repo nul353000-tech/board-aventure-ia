@@ -1,6 +1,6 @@
 # Board Aventure IA — audit et stabilisation
 
-Application Android Kotlin destinée exclusivement au jeu Coin Master: Board Adventure (package Android vérifié : `com.moonactive.cmboard`).
+Application Android Kotlin destinée exclusivement au jeu Board Aventure (package Android cible : `com.moonactive.cmboard`).
 
 ## Fonctionnalités présentes dans le code
 - Service Android AccessibilityService pour détection de l'application au premier plan.
@@ -19,11 +19,11 @@ Application Android Kotlin destinée exclusivement au jeu Coin Master: Board Adv
 5. Saisir la clé OpenRouter et un identifiant de modèle compatible avec l'entrée image. Pour un test reproductible, utiliser un modèle vision précis plutôt qu'un routeur aléatoire `openrouter/free`.
 
 ## Compilation et signature
-Le workflow GitHub Actions construit l'APK debug, crée une clé de signature persistante si elle n'existe pas, la met en cache et vérifie la signature et l'identifiant de paquet avant publication. Une première installation signée avec un nouveau certificat peut nécessiter la désinstallation de l'ancienne version. Les versions suivantes doivent conserver le même certificat tant que le cache de signature est conservé.
+Le workflow GitHub Actions construit l'APK debug, crée une clé de signature persistante si elle n'existe pas, la met en cache et vérifie la signature et l'identifiant de paquet avant publication. Le workflow contrôle l'empreinte SHA-256 du certificat attendu et bloque la publication si elle change. Ne supprime pas le cache de signature et ne change pas sa clé sans procédure de migration.
 
 ## Limites et tests à réaliser
 - Une compilation réussie prouve que le code compile, pas que le panneau, la capture ou l'OCR fonctionnent sur le téléphone réel.
-- Les sept images de référence n'ont pas été ajoutées au dépôt.
+- Les sept images de référence n'ont pas été ajoutées au dépôt ; la reconnaissance n'est donc pas calibrée sur les écrans réels.
 - Les compteurs ne sont pas encore validés par comparaison sur plusieurs captures réelles.
 - Le code de politique d'action refuse actuellement toutes les actions ; aucun clic automatique n'est implémenté.
 - Android peut exiger une autorisation manuelle des paramètres restreints pour activer un service d'accessibilité installé depuis un APK externe. L'application ne peut pas supprimer cette protection.
