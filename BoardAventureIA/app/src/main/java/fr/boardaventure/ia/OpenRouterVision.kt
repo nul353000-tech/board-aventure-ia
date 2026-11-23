@@ -28,10 +28,10 @@ class OpenRouterVision {
             "Analyse uniquement ce qui est visible, sans inventer. Réponds en JSON strict avec recognized(boolean), " +
             "confidence(number 0..1), screen(string), turns(string|null), bonus_turns(string|null), coins(string|null), " +
             "gems(string|null), stars(string|null), multiplier(string|null), recommendation(string), " +
-            "action('none'|'tap'), x(integer|null), y(integer|null), reason(string). " +
+            "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
             "Tours, bonus, pièces et gemmes peuvent monter ou baisser ; étoiles seulement augmenter. " +
-            "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure."
+            "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Action=none sauf si une action gratuite ou un lancer est clairement pertinent ; ne fournis jamais de coordonnées de clic non vérifiées."
         val userPrompt = "Règles: réserve de 5 tours, limite de lancers=all, arrêt=both. " +
             "Gemmes gagnées utilisables si cela améliore clairement la progression. " +
             "Ne pas arrêter seulement parce qu'une progression liée est terminée. Retourne uniquement le JSON demandé."
