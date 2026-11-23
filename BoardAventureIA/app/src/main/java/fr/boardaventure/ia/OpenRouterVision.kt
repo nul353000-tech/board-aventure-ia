@@ -49,10 +49,37 @@ class OpenRouterVision {
         client.newCall(req).execute().use { res ->
             val body = res.body?.string().orEmpty()
             if (!res.isSuccessful) error("OpenRouter HTTP ${res.code}: ${body.take(350)}")
-            val raw = JSONObject(body).getJSONArray("choices").getJSONObject(0)
-                .getJSONObject("message").getString("content").trim()
-            val json = raw.removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
-            val j = JSONObject(json)
+            val response = JSONObject(body)
+            val choices = response.optJSONArray("choices")
+                ?: error("Réponse OpenRouter invalide : aucune liste choices. Détail : ${body.take(250)}")
+            if (choices.length() == 0) error("OpenRouter n'a renvoyé aucun résultat.")
+            val choice = choices.optJSONObject(0)
+                ?: error("Réponse OpenRouter invalide : choix vide.")
+            val message = choice.optJSONObject("message")
+                ?: error("OpenRouter n'a pas fourni de message. Motif : ${choice.optString("finish_reason", "inconnu")}")
+            val contentValue = message.opt("content")
+            val raw = when (contentValue) {
+                is String -> contentValue.trim()
+                is org.json.JSONArray -> buildString {
+                    for (i in 0 until contentValue.length()) {
+                        val part = contentValue.optJSONObject(i)
+                        if (part != null) append(part.optString("text", ""))
+                    }
+                }.trim()
+                null, JSONObject.NULL -> ""
+                else -> contentValue.toString().trim()
+            }
+            if (raw.isBlank()) {
+                val refusal = message.optString("refusal", "")
+                val finish = choice.optString("finish_reason", "inconnu")
+                error("Réponse IA vide (finish_reason=$finish).${if (refusal.isNotBlank()) " Refus : $refusal" else " Vérifie le modèle vision OpenRouter sélectionné."}")
+            }
+            val cleaned = raw.replace("```json", "").replace("```", "").trim()
+            val start = cleaned.indexOf('{')
+            val end = cleaned.lastIndexOf('}')
+            if (start < 0 || end <= start) error("Réponse IA non JSON : ${cleaned.take(220)}")
+            val j = try { JSONObject(cleaned.substring(start, end + 1)) }
+                catch (e: Exception) { error("JSON IA illisible : ${e.message}. Réponse : ${cleaned.take(180)}") }
             fun str(k: String) = if (j.isNull(k) || !j.has(k)) null else j.optString(k).takeIf { it.isNotBlank() }
             fun int(k: String) = if (j.isNull(k) || !j.has(k)) null else j.optInt(k)
             GameAnalysis(j.optBoolean("recognized", false), j.optDouble("confidence", 0.0),
