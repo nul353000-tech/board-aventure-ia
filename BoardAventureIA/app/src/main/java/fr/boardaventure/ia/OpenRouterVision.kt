@@ -11,7 +11,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
-data class GameAnalysis(
+            GameAnalysis(recognizedValue, confidence,
     val recognized: Boolean, val confidence: Double, val turns: String?, val bonusTurns: String?,
     val coins: String?, val gems: String?, val stars: String?, val multiplier: String?,
     val screen: String, val recommendation: String, val action: String,
@@ -21,6 +21,8 @@ class OpenRouterVision {
     private val client = OkHttpClient.Builder().callTimeout(45, TimeUnit.SECONDS).build()
     suspend fun analyze(apiKey: String, model: String, bitmap: Bitmap): GameAnalysis = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "Clé OpenRouter manquante." }
+        require(model.isNotBlank()) { "Identifiant du modèle vision manquant." }
+        require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Capture d’écran invalide ou déjà libérée." }
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 82, stream)
         val image = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
@@ -80,12 +82,36 @@ class OpenRouterVision {
             if (start < 0 || end <= start) error("Réponse IA non JSON : ${cleaned.take(220)}")
             val j = try { JSONObject(cleaned.substring(start, end + 1)) }
                 catch (e: Exception) { error("JSON IA illisible : ${e.message}. Réponse : ${cleaned.take(180)}") }
-            fun str(k: String) = if (j.isNull(k) || !j.has(k)) null else j.optString(k).takeIf { it.isNotBlank() }
-            fun int(k: String) = if (j.isNull(k) || !j.has(k)) null else j.optInt(k)
+            fun str(k: String): String? {
+                if (!j.has(k) || j.isNull(k)) return null
+                return when (val value = j.opt(k)) {
+                    is String -> value.trim().takeIf { it.isNotEmpty() }
+                    is Number -> value.toString()
+                    else -> error("Champ $k invalide : texte ou nombre attendu.")
+                }
+            }
+            fun int(k: String): Int? {
+                if (!j.has(k) || j.isNull(k)) return null
+                val value = j.opt(k)
+                if (value !is Number) error("Champ $k invalide : entier attendu.")
+                val number = value.toDouble()
+                if (!number.isFinite() || number % 1.0 != 0.0 || number < Int.MIN_VALUE || number > Int.MAX_VALUE) {
+                    error("Champ $k invalide : entier hors limites.")
+                }
+                return number.toInt()
+            }
+            val recognizedValue = j.opt("recognized")
+            if (recognizedValue !is Boolean) error("Champ recognized absent ou invalide.")
+            val confidenceValue = j.opt("confidence")
+            if (confidenceValue !is Number) error("Champ confidence absent ou invalide.")
+            val confidence = confidenceValue.toDouble()
+            if (!confidence.isFinite() || confidence !in 0.0..1.0) error("Score de confiance hors limites.")
+            val action = str("action") ?: "none"
+            if (action !in setOf("none", "spin", "collect_free_reward", "upgrade_village")) error("Action IA inconnue : $action")
             GameAnalysis(j.optBoolean("recognized", false), j.optDouble("confidence", 0.0),
                 str("turns"), str("bonus_turns"), str("coins"), str("gems"), str("stars"), str("multiplier"),
-                j.optString("screen", "inconnu"), j.optString("recommendation", ""), j.optString("action", "none"),
-                int("x"), int("y"), j.optString("reason", ""))
+                str("screen") ?: "inconnu", str("recommendation") ?: "", action,
+                int("x"), int("y"), str("reason") ?: "")
         }
     }
 }
