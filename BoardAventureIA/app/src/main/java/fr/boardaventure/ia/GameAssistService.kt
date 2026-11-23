@@ -34,29 +34,52 @@ class GameAssistService : AccessibilityService() {
     private var resultView: TextView? = null
     private var analyzing = false
     private var lastForegroundPackage = "Application en attente"
+    private var discoveryAttempts = 0
+
+    private val discoveryRunnable = object : Runnable {
+        override fun run() {
+            if (isGameVisible()) {
+                lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
+                showFloatingPanel()
+                statusView?.text = "Jeu Board Aventure détecté"
+                return
+            }
+            discoveryAttempts++
+            if (discoveryAttempts < 12) mainHandler.postDelayed(this, 500L)
+        }
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
-        val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
-        val gameWindowVisible = runCatching {
-            windows.any { window -> window.root?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE }
-        }.getOrDefault(false)
-        val gameIsActive = pkg == ActionPolicy.TARGET_PACKAGE ||
-            activePackage == ActionPolicy.TARGET_PACKAGE || gameWindowVisible
+        val gameIsActive = pkg == ActionPolicy.TARGET_PACKAGE || isGameVisible()
         if (gameIsActive) {
             lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
             showFloatingPanel()
             statusView?.text = "Jeu Board Aventure détecté"
             return
         }
-        // Do not hide for keyboard/dialog child events; only hide after a confirmed
-        // foreground transition where the game is no longer among visible windows.
-        val isWindowTransition = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        if (isWindowTransition && activePackage != null) {
-            lastForegroundPackage = activePackage
-            removeFloatingPanel()
+        val isWindowTransition =
+            event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        if (isWindowTransition) {
+            val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+            if (activePackage != null && activePackage != ActionPolicy.TARGET_PACKAGE) {
+                lastForegroundPackage = activePackage
+                removeFloatingPanel()
+            }
         }
+    }
+
+    private fun isGameVisible(): Boolean {
+        val active = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+        if (active == ActionPolicy.TARGET_PACKAGE) return true
+        return runCatching {
+            windows.any { window ->
+                runCatching {
+                    window.root?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE
+                }.getOrDefault(false)
+            }
+        }.getOrDefault(false)
     }
 
     override fun onInterrupt() {
@@ -67,15 +90,13 @@ class GameAssistService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val activePackage = rootInActiveWindow?.packageName?.toString()
-        lastForegroundPackage = activePackage ?: "Application en attente"
-        if (activePackage == ActionPolicy.TARGET_PACKAGE) {
-            showFloatingPanel()
-            statusView?.text = "Jeu Board Aventure détecté"
-        }
+        discoveryAttempts = 0
+        mainHandler.removeCallbacks(discoveryRunnable)
+        mainHandler.post(discoveryRunnable)
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(discoveryRunnable)
         removeFloatingPanel()
         scope.cancel()
         instance = null
@@ -156,16 +177,16 @@ class GameAssistService : AccessibilityService() {
     private fun analyzeCurrentScreen() {
         if (analyzing) return
         val button = analyzeButton ?: return
-        if (lastForegroundPackage != ActionPolicy.TARGET_PACKAGE &&
-            rootInActiveWindow?.packageName?.toString() != ActionPolicy.TARGET_PACKAGE) {
+        if (!isGameVisible()) {
+            lastForegroundPackage = "Application en attente"
             statusView?.text = "Ouvre d'abord Board Aventure avant de lancer l'analyse."
             return
         }
+        lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
         analyzing = true
         button.isEnabled = false
         button.text = "CAPTURE…"
         statusView?.text = "Masquage du panneau avant capture"
-        // Hide our own overlay so it cannot cover or contaminate the game screenshot.
         panel?.visibility = View.INVISIBLE
         mainHandler.postDelayed({
             takeGameScreenshot { bitmap, error ->
@@ -184,8 +205,6 @@ class GameAssistService : AccessibilityService() {
             callback(null, "Android 11 ou plus requis.")
             return
         }
-        // Android should always complete a screenshot request, but guard against a lost
-        // callback so the overlay button cannot remain disabled forever.
         val completed = AtomicBoolean(false)
         val timeout = Runnable {
             if (completed.compareAndSet(false, true)) {
@@ -219,7 +238,6 @@ class GameAssistService : AccessibilityService() {
                 complete(null, "Capture Android refusée (code $errorCode).")
             }
         }
-        // API 34+: capture only the actual game window, excluding accessibility overlays.
         val gameWindow = if (Build.VERSION.SDK_INT >= 34) {
             windows.firstOrNull { window ->
                 runCatching { window.root?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE }
@@ -252,20 +270,22 @@ class GameAssistService : AccessibilityService() {
                     return@launch
                 }
                 statusView?.text = "Analyse OpenRouter en cours…"
-                val a = OpenRouterVision().analyze(apiKey, model, bitmap)
-                val recognized = a.recognized && a.confidence >= ActionPolicy.MIN_CONFIDENCE
+                val analysis = OpenRouterVision().analyze(apiKey, model, bitmap)
+                val recognized = analysis.recognized &&
+                    analysis.confidence >= ActionPolicy.MIN_CONFIDENCE
                 val details = if (!recognized) {
-                    "Jeu non confirmé (confiance ${(a.confidence * 100).toInt()} %).\nÉcran identifié : ${a.screen}\nMotif : ${a.reason}\nAucune action effectuée."
+                    "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
+                        "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
                 } else {
-                    "Board Aventure reconnu · ${(a.confidence * 100).toInt()} %\n" +
-                    "Tours : ${a.turns ?: "illisible"}\n" +
-                    "Tours bonus : ${a.bonusTurns ?: "illisible"}\n" +
-                    "Pièces : ${a.coins ?: "illisible"}\n" +
-                    "Gemmes : ${a.gems ?: "illisible"}\n" +
-                    "Étoiles : ${a.stars ?: "illisible"}\n" +
-                    "Multiplicateur : ${a.multiplier ?: "illisible"}\n" +
-                    "Conseil : ${a.recommendation}\n" +
-                    "Action proposée : ${a.action}\nAucun clic ni dépense exécuté."
+                    "Board Aventure reconnu · ${(analysis.confidence * 100).toInt()} %\n" +
+                        "Tours : ${analysis.turns ?: "illisible"}\n" +
+                        "Tours bonus : ${analysis.bonusTurns ?: "illisible"}\n" +
+                        "Pièces : ${analysis.coins ?: "illisible"}\n" +
+                        "Gemmes : ${analysis.gems ?: "illisible"}\n" +
+                        "Étoiles : ${analysis.stars ?: "illisible"}\n" +
+                        "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
+                        "Conseil : ${analysis.recommendation}\n" +
+                        "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
                 }
                 resultView?.text = details
                 resultView?.visibility = View.VISIBLE
@@ -273,7 +293,7 @@ class GameAssistService : AccessibilityService() {
             } catch (e: Exception) {
                 finishAnalysis("Erreur IA : ${e.message ?: e.javaClass.simpleName}", "RÉESSAYER")
             } finally {
-                bitmap.recycle()
+                if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
     }
