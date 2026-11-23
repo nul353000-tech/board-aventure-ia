@@ -1,32 +1,34 @@
-# Board Aventure IA — V0.3 sécurisation
+# Board Aventure IA — audit et stabilisation
 
-Projet Android Kotlin de capture et analyse visuelle du jeu Board Aventure.
+Application Android Kotlin destinée exclusivement au jeu Coin Master: Board Adventure (package Android vérifié : `com.moonactive.cmboard`).
 
-- Capture écran via AccessibilityService.
-- Analyse d'image avec OpenRouter Vision.
+## Fonctionnalités présentes dans le code
+- Service Android AccessibilityService pour détection de l'application au premier plan.
+- Panneau flottant d'analyse.
+- Capture d'écran et envoi d'image à OpenRouter Vision.
 - Clé OpenRouter chiffrée avec Android Keystore.
-- Lecture structurée des tours, tours bonus, pièces, gemmes, étoiles et multiplicateur.
-- Réserve stratégique de 5 tours ; les clics autonomes et dépenses sont désactivés.
-- Cible : package com.moonactive.cmboard.
+- Champs de lecture : tours, tours bonus, pièces, gemmes, étoiles et multiplicateur.
+- Réserve stratégique de 5 tours documentée dans le prompt.
+- Les clics et dépenses automatiques sont désactivés.
 
-## Compilation
-Le workflow GitHub Actions à la racine compile l'APK debug et publie l'artefact `Board-Aventure-IA-debug-apk`.
-
-## Configuration
+## Installation et première activation
 1. Installer l'APK depuis l'artefact GitHub Actions.
-2. Activer le service d'accessibilité dans les paramètres Android.
-3. Entrer la clé OpenRouter et un modèle vision disponible.
-4. Ouvrir Board Aventure et lancer l'analyse depuis l'application.
+2. Si Android affiche « Autoriser les paramètres restreints », l'autoriser manuellement dans les paramètres de l'application.
+3. Activer « Assistant Board Aventure » dans Paramètres > Accessibilité.
+4. Ouvrir Board Aventure : le panneau d'analyse doit apparaître sur le jeu.
+5. Saisir la clé OpenRouter et un identifiant de modèle compatible avec l'entrée image. Pour un test reproductible, utiliser un modèle vision précis plutôt qu'un routeur aléatoire `openrouter/free`.
 
-## Limites
-Ce projet source n'a pas encore été compilé ni testé sur Android 17 / Pixel 10a. Les sept images de référence ne sont pas intégrées. L'automatisation des clics n'est pas activée tant que les zones tactiles réelles ne sont pas calibrées ; aucun achat en argent réel n'est effectué.
+## Compilation et signature
+Le workflow GitHub Actions construit l'APK debug, crée une clé de signature persistante si elle n'existe pas, la met en cache et vérifie la signature et l'identifiant de paquet avant publication. Une première installation signée avec un nouveau certificat peut nécessiter la désinstallation de l'ancienne version. Les versions suivantes doivent conserver le même certificat tant que le cache de signature est conservé.
 
+## Limites et tests à réaliser
+- Une compilation réussie prouve que le code compile, pas que le panneau, la capture ou l'OCR fonctionnent sur le téléphone réel.
+- Les sept images de référence n'ont pas été ajoutées au dépôt.
+- Les compteurs ne sont pas encore validés par comparaison sur plusieurs captures réelles.
+- Le code de politique d'action refuse actuellement toutes les actions ; aucun clic automatique n'est implémenté.
+- Android peut exiger une autorisation manuelle des paramètres restreints pour activer un service d'accessibilité installé depuis un APK externe. L'application ne peut pas supprimer cette protection.
+- Une désinstallation efface les préférences locales et peut rendre la clé OpenRouter à ressaisir.
+- Le comportement doit encore être testé sur Android 17 / Pixel 10a.
 
-## Installation Android 13+ (autorisation système unique)
-Android peut bloquer l'activation d'un service d'accessibilité pour une application installée depuis un APK externe. Cette protection ne peut pas être désactivée par l'application.
-1. Ouvrir Paramètres Android > Applications > Board Aventure IA.
-2. Ouvrir le menu ⋮ puis choisir « Autoriser les paramètres restreints » si Android le propose.
-3. Revenir dans Paramètres > Accessibilité > Applications/services installés > Assistant Board Aventure, puis l'activer.
-4. Cette autorisation système peut être demandée à nouveau après une désinstallation/réinstallation ou une nouvelle installation considérée comme provenant d'une source différente.
-
-Une fois le service activé, ouvrir le jeu cible `com.moonactive.cmboard`. Le bouton flottant « Analyser » n'apparaît que lorsque le jeu est au premier plan. L'analyse affiche les valeurs et le conseil via une notification Toast ; elle n'exécute aucun clic ni aucune dépense.
+## Sécurité
+Aucun achat en argent réel ni aucune dépense automatique ne doit être exécuté. Les coordonnées tactiles ne doivent pas être activées avant calibration et validation humaine sur les écrans réels.
