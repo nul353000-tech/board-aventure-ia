@@ -2,6 +2,8 @@ package fr.boardaventure.ia
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.text.TextUtils
+import android.content.ComponentName
 import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
@@ -26,7 +28,14 @@ class MainActivity : ComponentActivity() {
             store.saveApiKey(key.text.toString().trim()); store.saveModel(model.text.toString().trim())
             status.text = "Configuration enregistrée et clé chiffrée sur l'appareil."
         }})
-        box.addView(Button(this).apply { text = "Activer l'assistant Android"; setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }})
+        box.addView(Button(this).apply { text = "Activer l'assistant Android"; setOnClickListener {
+            if (isAccessibilityServiceEnabled()) {
+                status.text = "Assistant déjà activé. Ouvre Board Aventure : le bouton flottant Analyser sera disponible."
+            } else {
+                status.text = "Active une seule fois Assistant Board Aventure dans les services installés."
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        }})
         box.addView(Button(this).apply { text = "Analyser l'écran du jeu"; setOnClickListener { analyze() }})
         status = TextView(this).apply { text = "État : en attente"; setPadding(0, 16, 0, 8) }
         result = TextView(this).apply { textSize = 14f }
@@ -37,6 +46,12 @@ class MainActivity : ComponentActivity() {
         })
         setContentView(ScrollView(this).apply { addView(box) })
     }
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val expected = ComponentName(this, GameAssistService::class.java).flattenToString()
+        return !TextUtils.isEmpty(enabled) && enabled.split(':').any { it.equals(expected, ignoreCase = true) }
+    }
+
     private fun analyze() {
         val api = store.apiKey()
         if (api.isNullOrBlank()) { status.text = "Enregistre ta clé OpenRouter."; return }
