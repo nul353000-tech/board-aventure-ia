@@ -38,20 +38,23 @@ class GameAssistService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
         val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+        val gameWindowVisible = runCatching {
+            windows.any { window -> window.root?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE }
+        }.getOrDefault(false)
         val gameIsActive = pkg == ActionPolicy.TARGET_PACKAGE ||
-            activePackage == ActionPolicy.TARGET_PACKAGE
+            activePackage == ActionPolicy.TARGET_PACKAGE || gameWindowVisible
         if (gameIsActive) {
             lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
             showFloatingPanel()
             statusView?.text = "Jeu Board Aventure détecté"
             return
         }
-        // Ignore child/content events from keyboards, dialogs and system overlays.
-        // Hide only when Android reports a genuine foreground-window transition.
+        // Do not hide for keyboard/dialog child events; only hide after a confirmed
+        // foreground transition where the game is no longer among visible windows.
         val isWindowTransition = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        if (isWindowTransition) {
-            lastForegroundPackage = activePackage ?: pkg
+        if (isWindowTransition && activePackage != null) {
+            lastForegroundPackage = activePackage
             removeFloatingPanel()
         }
     }
@@ -232,7 +235,7 @@ class GameAssistService : AccessibilityService() {
                 }
                 statusView?.text = "Analyse OpenRouter en cours…"
                 val a = OpenRouterVision().analyze(apiKey, model, bitmap)
-                val recognized = a.recognized && a.confidence >= 0.75
+                val recognized = a.recognized && a.confidence >= ActionPolicy.MIN_CONFIDENCE
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(a.confidence * 100).toInt()} %).\nÉcran identifié : ${a.screen}\nMotif : ${a.reason}\nAucune action effectuée."
                 } else {
