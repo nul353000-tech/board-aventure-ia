@@ -9,8 +9,8 @@ android {
         applicationId = "fr.boardaventure.ia"
         minSdk = 30
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 3
+        versionName = "0.3.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
