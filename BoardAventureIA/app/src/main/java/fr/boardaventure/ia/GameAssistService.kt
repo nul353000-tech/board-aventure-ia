@@ -171,7 +171,7 @@ class GameAssistService : AccessibilityService() {
             callback(null, "Android 11 ou plus requis.")
             return
         }
-        takeScreenshot(Display.DEFAULT_DISPLAY, Executor { it.run() }, object : TakeScreenshotCallback {
+        val screenshotCallback = object : TakeScreenshotCallback {
             override fun onSuccess(result: ScreenshotResult) {
                 val hardware = result.hardwareBuffer
                 val colorSpace = result.colorSpace ?: ColorSpace.get(ColorSpace.Named.SRGB)
@@ -185,9 +185,25 @@ class GameAssistService : AccessibilityService() {
             }
 
             override fun onFailure(errorCode: Int) {
-                callback(null, "Code Android $errorCode")
+                callback(null, "Capture Android refusée (code $errorCode).")
             }
-        })
+        }
+        // API 34+: capture only the actual game window, excluding accessibility overlays.
+        val gameWindow = if (Build.VERSION.SDK_INT >= 34) {
+            windows.firstOrNull { window ->
+                runCatching { window.root?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE }
+                    .getOrDefault(false)
+            }
+        } else null
+        try {
+            if (Build.VERSION.SDK_INT >= 34 && gameWindow != null) {
+                takeScreenshotOfWindow(gameWindow.id, mainExecutor, screenshotCallback)
+            } else {
+                takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, screenshotCallback)
+            }
+        } catch (e: Exception) {
+            callback(null, "Impossible de lancer la capture : ${e.message}")
+        }
     }
 
     private fun runAnalysis(bitmap: Bitmap) {
