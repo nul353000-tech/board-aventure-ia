@@ -1,18 +1,20 @@
 package fr.boardaventure.ia
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.ColorSpace
-import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.Display
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -24,119 +26,141 @@ import java.util.concurrent.Executor
 
 class GameAssistService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
-    private var floatingButton: TextView? = null
+    private var panel: LinearLayout? = null
+    private var analyzeButton: TextView? = null
+    private var statusView: TextView? = null
+    private var resultView: TextView? = null
     private var analyzing = false
+    private var lastForegroundPackage = "Application en attente"
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val currentPackage = event?.packageName?.toString() ?: return
-        if (currentPackage == ActionPolicy.TARGET_PACKAGE) showFloatingButton()
-        else removeFloatingButton()
+        val pkg = event?.packageName?.toString() ?: return
+        lastForegroundPackage = pkg
+        // Keep the control available even if Android omits a window-state event.
+        if (panel == null) showFloatingPanel()
+        statusView?.text = if (pkg == ActionPolicy.TARGET_PACKAGE) {
+            "Jeu Board Aventure détecté"
+        } else {
+            "Écran actif : $pkg"
+        }
     }
 
-    override fun onInterrupt() = removeFloatingButton()
+    override fun onInterrupt() {
+        statusView?.text = "Assistant interrompu"
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        showFloatingPanel()
+        statusView?.text = "Assistant actif — ouvre Board Aventure"
     }
 
     override fun onDestroy() {
-        removeFloatingButton()
+        removeFloatingPanel()
         scope.cancel()
         instance = null
         super.onDestroy()
     }
 
-    private fun showFloatingButton() {
-        if (floatingButton != null) return
+    private fun showFloatingPanel() {
+        if (panel != null) return
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 10, 12, 10)
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(28, 35, 48))
+                cornerRadius = 22f
+                setStroke(2, Color.rgb(65, 130, 210))
+            }
+            elevation = 12f
+        }
         val button = TextView(this).apply {
-            text = "Analyser"
+            text = "BOARD IA · ANALYSER"
             textSize = 14f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(22, 14, 22, 14)
+            setPadding(18, 13, 18, 13)
             background = GradientDrawable().apply {
                 setColor(Color.rgb(30, 105, 190))
-                cornerRadius = 48f
+                cornerRadius = 16f
             }
-            elevation = 10f
-            setOnClickListener { analyzeFromGame(this) }
+            setOnClickListener { analyzeCurrentScreen() }
         }
+        val status = TextView(this).apply {
+            text = "Assistant actif"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setPadding(3, 8, 3, 2)
+        }
+        val result = TextView(this).apply {
+            text = "Résultats de l'analyse affichés ici."
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setPadding(3, 5, 3, 2)
+            visibility = View.GONE
+        }
+        root.addView(button)
+        root.addView(status)
+        root.addView(result)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 18
-            y = 220
+            x = 12
+            y = 180
         }
-        runCatching {
-            windowManager?.addView(button, params)
-            floatingButton = button
-        }.onFailure {
-            Toast.makeText(this, "Bouton flottant indisponible : ${it.message}", Toast.LENGTH_LONG).show()
+        try {
+            windowManager?.addView(root, params)
+            panel = root
+            analyzeButton = button
+            statusView = status
+            resultView = result
+        } catch (e: Exception) {
+            Toast.makeText(this, "Panneau indisponible : ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun removeFloatingButton() {
-        floatingButton?.let { view -> runCatching { windowManager?.removeView(view) } }
-        floatingButton = null
+    private fun removeFloatingPanel() {
+        panel?.let { view -> runCatching { windowManager?.removeView(view) } }
+        panel = null
+        analyzeButton = null
+        statusView = null
+        resultView = null
     }
 
-    private fun analyzeFromGame(button: TextView) {
+    private fun analyzeCurrentScreen() {
         if (analyzing) return
+        val button = analyzeButton ?: return
         analyzing = true
         button.isEnabled = false
-        button.text = "Lecture…"
-        capture { bitmap, error ->
-            if (bitmap == null) {
-                analyzing = false
-                button.text = "Réessayer"
-                button.isEnabled = true
-                Toast.makeText(this, error ?: "Capture impossible", Toast.LENGTH_LONG).show()
-                return@capture
-            }
-            scope.launch {
-                try {
-                    val store = SecureStore(this@GameAssistService)
-                    val api = store.apiKey()
-                    if (api.isNullOrBlank()) {
-                        button.text = "Clé absente"
-                        Toast.makeText(this@GameAssistService, "Enregistre d'abord ta clé OpenRouter dans Board Aventure IA.", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                    val a = OpenRouterVision().analyze(api, store.model(), bitmap)
-                    val recognized = a.recognized && a.confidence >= 0.75
-                    button.text = if (recognized) "Jeu ${(a.confidence * 100).toInt()}%" else "Non reconnu"
-                    val message = if (recognized) {
-                        "Tours : ${a.turns ?: "illisible"} | Bonus : ${a.bonusTurns ?: "illisible"}\n" +
-                        "Pièces : ${a.coins ?: "illisible"} | Gemmes : ${a.gems ?: "illisible"}\n" +
-                        "Étoiles : ${a.stars ?: "illisible"} | Multiplicateur : ${a.multiplier ?: "illisible"}\n" +
-                        "Conseil : ${a.recommendation}"
-                    } else {
-                        "Board Aventure non confirmé. Vérifie que le jeu est affiché au premier plan."
-                    }
-                    Toast.makeText(this@GameAssistService, message, Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    button.text = "Erreur IA"
-                    Toast.makeText(this@GameAssistService, e.message ?: "Erreur d'analyse", Toast.LENGTH_LONG).show()
-                } finally {
-                    bitmap.recycle()
-                    analyzing = false
-                    button.isEnabled = true
+        button.text = "CAPTURE…"
+        statusView?.text = "Masquage du panneau avant capture"
+        // Hide our own overlay so it cannot cover or contaminate the game screenshot.
+        panel?.visibility = View.INVISIBLE
+        mainHandler.postDelayed({
+            takeGameScreenshot { bitmap, error ->
+                panel?.visibility = View.VISIBLE
+                if (bitmap == null) {
+                    finishAnalysis("Échec capture : ${error ?: "inconnue"}", "RÉESSAYER")
+                    return@takeGameScreenshot
                 }
+                runAnalysis(bitmap)
             }
-        }
+        }, 180)
     }
 
-    fun capture(callback: (Bitmap?, String?) -> Unit) {
+    private fun takeGameScreenshot(callback: (Bitmap?, String?) -> Unit) {
         if (Build.VERSION.SDK_INT < 30) {
-            callback(null, "Capture d'écran non prise en charge.")
+            callback(null, "Android 11 ou plus requis.")
             return
         }
         takeScreenshot(Display.DEFAULT_DISPLAY, Executor { it.run() }, object : TakeScreenshotCallback {
@@ -144,27 +168,68 @@ class GameAssistService : AccessibilityService() {
                 val hardware = result.hardwareBuffer
                 val colorSpace = result.colorSpace ?: ColorSpace.get(ColorSpace.Named.SRGB)
                 val bitmap = try {
-                    Bitmap.wrapHardwareBuffer(hardware, colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
+                    Bitmap.wrapHardwareBuffer(hardware, colorSpace)
+                        ?.copy(Bitmap.Config.ARGB_8888, false)
                 } finally {
                     hardware.close()
                 }
-                callback(bitmap, if (bitmap == null) "Conversion de la capture impossible." else null)
+                callback(bitmap, if (bitmap == null) "Conversion image impossible." else null)
             }
+
             override fun onFailure(errorCode: Int) {
-                callback(null, "Échec de capture écran (code $errorCode).")
+                callback(null, "Code Android $errorCode")
             }
         })
     }
 
-    fun tap(x: Float, y: Float, done: (Boolean) -> Unit) {
-        val path = Path().apply { moveTo(x, y) }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 80))
-            .build()
-        dispatchGesture(gesture, object : GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription?) = done(true)
-            override fun onCancelled(gestureDescription: GestureDescription?) = done(false)
-        }, null)
+    private fun runAnalysis(bitmap: Bitmap) {
+        scope.launch {
+            try {
+                val store = SecureStore(this@GameAssistService)
+                val apiKey = store.apiKey()
+                if (apiKey.isNullOrBlank()) {
+                    finishAnalysis("Clé OpenRouter absente. Enregistre-la dans l'application.", "CLÉ ABSENTE")
+                    return@launch
+                }
+                val model = store.model().trim()
+                if (model.isBlank()) {
+                    finishAnalysis("Identifiant du modèle vision manquant.", "MODÈLE ABSENT")
+                    return@launch
+                }
+                statusView?.text = "Analyse OpenRouter en cours…"
+                val a = OpenRouterVision().analyze(apiKey, model, bitmap)
+                val recognized = a.recognized && a.confidence >= 0.75
+                val details = if (!recognized) {
+                    "Jeu non confirmé (confiance ${(a.confidence * 100).toInt()} %).\nÉcran identifié : ${a.screen}\nMotif : ${a.reason}\nAucune action effectuée."
+                } else {
+                    "Board Aventure reconnu · ${(a.confidence * 100).toInt()} %\n" +
+                    "Tours : ${a.turns ?: "illisible"}\n" +
+                    "Tours bonus : ${a.bonusTurns ?: "illisible"}\n" +
+                    "Pièces : ${a.coins ?: "illisible"}\n" +
+                    "Gemmes : ${a.gems ?: "illisible"}\n" +
+                    "Étoiles : ${a.stars ?: "illisible"}\n" +
+                    "Multiplicateur : ${a.multiplier ?: "illisible"}\n" +
+                    "Conseil : ${a.recommendation}\n" +
+                    "Action proposée : ${a.action}\nAucun clic ni dépense exécuté."
+                }
+                resultView?.text = details
+                resultView?.visibility = View.VISIBLE
+                finishAnalysis(if (recognized) "Analyse terminée" else "Jeu non reconnu", "ANALYSER")
+            } catch (e: Exception) {
+                finishAnalysis("Erreur IA : ${e.message ?: e.javaClass.simpleName}", "RÉESSAYER")
+            } finally {
+                bitmap.recycle()
+            }
+        }
+    }
+
+    private fun finishAnalysis(message: String, buttonText: String) {
+        analyzing = false
+        statusView?.text = "$message · écran : $lastForegroundPackage"
+        analyzeButton?.apply {
+            text = buttonText
+            isEnabled = true
+        }
     }
 
     companion object {
