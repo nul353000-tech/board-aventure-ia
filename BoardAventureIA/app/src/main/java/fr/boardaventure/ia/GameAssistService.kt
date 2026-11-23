@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executor
 
 class GameAssistService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -186,14 +185,15 @@ class GameAssistService : AccessibilityService() {
         }
         val screenshotCallback = object : TakeScreenshotCallback {
             override fun onSuccess(result: ScreenshotResult) {
-                val hardware = result.hardwareBuffer
-                val colorSpace = result.colorSpace ?: ColorSpace.get(ColorSpace.Named.SRGB)
-                val bitmap = try {
-                    Bitmap.wrapHardwareBuffer(hardware, colorSpace)
-                        ?.copy(Bitmap.Config.ARGB_8888, false)
-                } finally {
-                    hardware.close()
-                }
+                val bitmap = runCatching {
+                    val hardware = result.hardwareBuffer
+                    try {
+                        val colorSpace = result.colorSpace ?: ColorSpace.get(ColorSpace.Named.SRGB)
+                        Bitmap.wrapHardwareBuffer(hardware, colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
+                    } finally {
+                        runCatching { hardware.close() }
+                    }
+                }.getOrNull()
                 callback(bitmap, if (bitmap == null) "Conversion image impossible." else null)
             }
 
