@@ -6,8 +6,6 @@ import android.text.TextUtils
 import android.content.ComponentName
 import android.widget.*
 import androidx.activity.ComponentActivity
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var store: SecureStore
@@ -15,7 +13,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var model: EditText
     private lateinit var status: TextView
     private lateinit var result: TextView
-    private val vision = OpenRouterVision()
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); store = SecureStore(this); ui() }
     private fun ui() {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 24, 24, 24) }
@@ -36,7 +33,9 @@ class MainActivity : ComponentActivity() {
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         }})
-        box.addView(Button(this).apply { text = "Analyser l'écran du jeu"; setOnClickListener { analyze() }})
+        box.addView(Button(this).apply { text = "Comment lancer l'analyse"; setOnClickListener {
+            status.text = "1. Enregistre ta clé. 2. Active l'assistant une seule fois. 3. Ouvre Board Aventure : le bouton flottant Analyser apparaît sur le jeu."
+        }})
         status = TextView(this).apply { text = "État : en attente"; setPadding(0, 16, 0, 8) }
         result = TextView(this).apply { textSize = 14f }
         box.addView(status); box.addView(result)
@@ -52,37 +51,4 @@ class MainActivity : ComponentActivity() {
         return !TextUtils.isEmpty(enabled) && enabled.split(':').any { it.equals(expected, ignoreCase = true) }
     }
 
-    private fun analyze() {
-        val api = store.apiKey()
-        if (api.isNullOrBlank()) { status.text = "Enregistre ta clé OpenRouter."; return }
-        val svc = GameAssistService.instance
-        if (svc == null) { status.text = "Active l'assistant dans les réglages d'accessibilité."; return }
-        status.text = "Capture en cours…"
-        svc.capture { bmp, err ->
-            if (bmp == null) { status.text = err ?: "Capture impossible"; return@capture }
-            status.text = "Analyse IA…"
-            lifecycleScope.launch {
-                runCatching { vision.analyze(api, store.model(), bmp) }
-                    .onSuccess { a ->
-                        status.text = if (a.recognized && a.confidence >= 0.75) "Board Aventure reconnu" else "Écran non confirmé — aucune action"
-                        result.text = """
-Confiance : ${(a.confidence * 100).toInt()} %
-Écran : ${a.screen}
-Tours : ${a.turns ?: "illisible"}
-Tours bonus : ${a.bonusTurns ?: "illisible"}
-Pièces : ${a.coins ?: "illisible"}
-Gemmes : ${a.gems ?: "illisible"}
-Étoiles : ${a.stars ?: "illisible"}
-Multiplicateur : ${a.multiplier ?: "illisible"}
-
-Conseil : ${a.recommendation}
-Action suggérée : ${a.action}
-Motif : ${a.reason}
-
-Aucun clic effectué.
-""".trimIndent()
-                    }.onFailure { status.text = "Erreur IA : ${it.message}" }
-            }
-        }
-    }
 }
