@@ -38,12 +38,11 @@ class GameAssistService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
         lastForegroundPackage = pkg
-        // Keep the control available even if Android omits a window-state event.
-        if (panel == null) showFloatingPanel()
-        statusView?.text = if (pkg == ActionPolicy.TARGET_PACKAGE) {
-            "Jeu Board Aventure détecté"
+        if (pkg == ActionPolicy.TARGET_PACKAGE) {
+            showFloatingPanel()
+            statusView?.text = "Jeu Board Aventure détecté"
         } else {
-            "Écran actif : $pkg"
+            removeFloatingPanel()
         }
     }
 
@@ -55,8 +54,12 @@ class GameAssistService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        showFloatingPanel()
-        statusView?.text = "Assistant actif — ouvre Board Aventure"
+        val activePackage = rootInActiveWindow?.packageName?.toString()
+        lastForegroundPackage = activePackage ?: "Application en attente"
+        if (activePackage == ActionPolicy.TARGET_PACKAGE) {
+            showFloatingPanel()
+            statusView?.text = "Jeu Board Aventure détecté"
+        }
     }
 
     override fun onDestroy() {
@@ -140,6 +143,11 @@ class GameAssistService : AccessibilityService() {
     private fun analyzeCurrentScreen() {
         if (analyzing) return
         val button = analyzeButton ?: return
+        if (lastForegroundPackage != ActionPolicy.TARGET_PACKAGE &&
+            rootInActiveWindow?.packageName?.toString() != ActionPolicy.TARGET_PACKAGE) {
+            statusView?.text = "Ouvre d'abord Board Aventure avant de lancer l'analyse."
+            return
+        }
         analyzing = true
         button.isEnabled = false
         button.text = "CAPTURE…"
