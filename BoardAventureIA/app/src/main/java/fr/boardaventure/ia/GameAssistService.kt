@@ -17,6 +17,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -183,6 +184,23 @@ class GameAssistService : AccessibilityService() {
             callback(null, "Android 11 ou plus requis.")
             return
         }
+        // Android should always complete a screenshot request, but guard against a lost
+        // callback so the overlay button cannot remain disabled forever.
+        val completed = AtomicBoolean(false)
+        val timeout = Runnable {
+            if (completed.compareAndSet(false, true)) {
+                callback(null, "Délai de capture dépassé. Réessaie.")
+            }
+        }
+        mainHandler.postDelayed(timeout, 12_000L)
+        fun complete(bitmap: Bitmap?, error: String?) {
+            if (completed.compareAndSet(false, true)) {
+                mainHandler.removeCallbacks(timeout)
+                callback(bitmap, error)
+            } else {
+                bitmap?.recycle()
+            }
+        }
         val screenshotCallback = object : TakeScreenshotCallback {
             override fun onSuccess(result: ScreenshotResult) {
                 val bitmap = runCatching {
@@ -194,11 +212,11 @@ class GameAssistService : AccessibilityService() {
                         runCatching { hardware.close() }
                     }
                 }.getOrNull()
-                callback(bitmap, if (bitmap == null) "Conversion image impossible." else null)
+                complete(bitmap, if (bitmap == null) "Conversion image impossible." else null)
             }
 
             override fun onFailure(errorCode: Int) {
-                callback(null, "Capture Android refusée (code $errorCode).")
+                complete(null, "Capture Android refusée (code $errorCode).")
             }
         }
         // API 34+: capture only the actual game window, excluding accessibility overlays.
@@ -215,7 +233,7 @@ class GameAssistService : AccessibilityService() {
                 takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, screenshotCallback)
             }
         } catch (e: Exception) {
-            callback(null, "Impossible de lancer la capture : ${e.message}")
+            complete(null, "Impossible de lancer la capture : ${e.message}")
         }
     }
 
