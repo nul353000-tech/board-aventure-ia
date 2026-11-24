@@ -35,6 +35,7 @@ class GameAssistService : AccessibilityService() {
     private var analyzing = false
     private var lastForegroundPackage = "Application en attente"
     private var discoveryAttempts = 0
+    private var autoAnalysisStartedForSession = false
 
     private val discoveryRunnable = object : Runnable {
         override fun run() {
@@ -56,6 +57,7 @@ class GameAssistService : AccessibilityService() {
             lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
             showFloatingPanel()
             if (!analyzing) statusView?.text = "Jeu Board Aventure détecté"
+            startAutomaticInitialAnalysis()
             return
         }
         val isWindowTransition =
@@ -65,6 +67,8 @@ class GameAssistService : AccessibilityService() {
             val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
             if (activePackage != null && activePackage != ActionPolicy.TARGET_PACKAGE) {
                 lastForegroundPackage = activePackage
+                autoAnalysisStartedForSession = false
+                mainHandler.removeCallbacks(autoAnalysisRunnable)
                 removeFloatingPanel()
             }
         }
@@ -97,10 +101,24 @@ class GameAssistService : AccessibilityService() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(discoveryRunnable)
+        mainHandler.removeCallbacks(autoAnalysisRunnable)
         removeFloatingPanel()
         scope.cancel()
         instance = null
         super.onDestroy()
+    }
+
+    // Automatic first-stage feature: analyse once when the game opens.
+    // No game taps, spending, or purchases are performed.
+    private val autoAnalysisRunnable = Runnable {
+        if (isGameVisible() && !analyzing) analyzeCurrentScreen()
+    }
+
+    private fun startAutomaticInitialAnalysis() {
+        if (autoAnalysisStartedForSession || analyzing) return
+        autoAnalysisStartedForSession = true
+        mainHandler.removeCallbacks(autoAnalysisRunnable)
+        mainHandler.postDelayed(autoAnalysisRunnable, 1800L)
     }
 
     private fun showFloatingPanel() {
