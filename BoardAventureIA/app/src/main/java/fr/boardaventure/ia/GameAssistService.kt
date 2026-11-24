@@ -442,7 +442,8 @@ class GameAssistService : AccessibilityService() {
                         "Étoiles : ${analysis.stars ?: "illisible"}\n" +
                         "Énergie : ${analysis.energy ?: "illisible"}\n" +
                         "Bonus d'énergie : ${analysis.energyBonus ?: "illisible"}\n" +
-                        "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
+                        "Multiplicateur détecté : ${analysis.multiplier ?: "illisible"}\n" +
+                        "Multiplicateur conseillé : x${plan.recommendedMultiplier} (prudent)\n" +
                         "Mode de lancer : ${spinStateLabel(analysis.spinState)}\n" +
                         "Cartes village :\n" + formatVillageCards(analysis.coins, analysis.villageUpgradeCosts) +
                         "Cartes abordables après réserve : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
