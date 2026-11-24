@@ -695,7 +695,6 @@ class GameAssistService : AccessibilityService() {
     companion object {
         const val AUTO_WATCHDOG_MS = 15_000L
         private const val POST_GESTURE_VERIFY_MS = 1_800L
-        private const val MAX_MULTIPLIER_STEPS = 10
         @Volatile var instance: GameAssistService? = null
             private set
     }
