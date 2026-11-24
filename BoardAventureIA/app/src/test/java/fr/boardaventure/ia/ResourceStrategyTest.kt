@@ -65,9 +65,9 @@ class ResourceStrategyTest {
     }
 
 
-    @Test fun startsOnlyShortWatchdogAutoAtX1WithEnergyBuffer() {
+    @Test fun neverStartsAutoFromUnverifiedMultiplierVision() {
         val safe = ResourceStrategy.plan(true, 0.99, "100000000", "60/120", "+0", "x1", "ready", null)
-        assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, safe.spinCommand)
+        assertEquals(ResourceStrategy.SpinCommand.WAIT, safe.spinCommand)
         val highMultiplier = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+0", "x2", "ready", null)
         assertEquals(ResourceStrategy.SpinCommand.WAIT, highMultiplier.spinCommand)
         val lowBuffer = ResourceStrategy.plan(true, 0.99, "100000000", "50/120", "+0", "x1", "ready", null)
