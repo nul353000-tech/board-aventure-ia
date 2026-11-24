@@ -54,11 +54,7 @@ object ResourceStrategy {
         val suggested = affordable.firstOrNull()
 
         val command = when (spinState?.lowercase()) {
-            "auto_active" -> when {
-                currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
-                currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.TAP_STOP
-                else -> SpinCommand.WAIT
-            }
+            "auto_active" -> SpinCommand.TAP_STOP
             "ready" -> when {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
                 currentEnergy <= DEFAULT_ENERGY_RESERVE && bonus > 0L -> SpinCommand.TAP_SINGLE
