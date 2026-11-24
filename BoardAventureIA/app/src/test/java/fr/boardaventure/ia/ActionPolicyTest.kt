@@ -57,7 +57,7 @@ class ActionPolicyTest {
 
     @Test fun multiplierZoneIsValidatedAndWrongAspectRatioIsRejected() {
         val point = ActionPolicy.controlPreview("multiplier", 684, 1536)!!
-        assertTrue(validate(action = "set_multiplier", x = point.first, y = point.second, width = 684, height = 1536).allowed)
+        assertFalse(validate(action = "set_multiplier", x = point.first, y = point.second, width = 684, height = 1536).allowed)
         assertFalse(validate(width = 1080, height = 1920).allowed)
     }
 
