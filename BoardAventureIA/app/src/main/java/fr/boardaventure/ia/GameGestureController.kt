@@ -19,7 +19,7 @@ internal object GameGestureController {
         authorized: Boolean,
         callback: (Boolean) -> Unit
     ) {
-        dispatch(service, target, durationMs = 70L, authorized, callback)
+        dispatch(service, target, 70L, authorized, callback)
     }
 
     fun hold(
