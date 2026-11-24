@@ -278,9 +278,7 @@ class GameAssistService : AccessibilityService() {
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
                 } else {
                     "Board Aventure reconnu · ${(analysis.confidence * 100).toInt()} %\n" +
-                        "Tours : ${analysis.turns ?: "illisible"}\n" +
-                        "Tours bonus : ${analysis.bonusTurns ?: "illisible"}\n" +
-                        "Pièces : ${analysis.coins ?: "illisible"}\n" +
+    "Pièces : ${analysis.coins ?: "illisible"}\n" +
                         "Gemmes : ${analysis.gems ?: "illisible"}\n" +
                         "Étoiles : ${analysis.stars ?: "illisible"}\n" +
                         "Énergie : ${analysis.energy ?: "illisible"}\n" +
