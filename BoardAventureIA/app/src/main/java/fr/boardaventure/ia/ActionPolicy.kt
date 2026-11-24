@@ -22,14 +22,19 @@ object ActionPolicy {
                 left < right && top < bottom
     }
 
-    // Screenshot-derived village price-strip targets (684x1536), preview only.
-    data class CardTarget(val number:Int,val centerX:Float,val centerY:Float,val left:Float,val top:Float,val right:Float,val bottom:Float,val verifiedForDevice:Boolean=false)
+    // Price-strip centers/bounds measured from the clean 684x1536 village screenshot.
+    // Preview-only: never used as click authorization.
+    data class CardTarget(
+        val number: Int, val centerX: Float, val centerY: Float,
+        val left: Float, val top: Float, val right: Float, val bottom: Float,
+        val verifiedForDevice: Boolean = false
+    )
     private val villageCardTargets = listOf(
-        CardTarget(1,69f/684f,1500f/1536f,8f/684f,1478f/1536f,130f/684f,1525f/1536f),
-        CardTarget(2,205f/684f,1500f/1536f,144f/684f,1478f/1536f,267f/684f,1525f/1536f),
-        CardTarget(3,342f/684f,1500f/1536f,281f/684f,1478f/1536f,404f/684f,1525f/1536f),
-        CardTarget(4,478f/684f,1500f/1536f,417f/684f,1478f/1536f,540f/684f,1525f/1536f),
-        CardTarget(5,615f/684f,1500f/1536f,554f/684f,1478f/1536f,677f/684f,1525f/1536f)
+        CardTarget(1, 72f/684f, 1487f/1536f, 7f/684f, 1446f/1536f, 137f/684f, 1527f/1536f),
+        CardTarget(2, 208f/684f, 1487f/1536f, 143f/684f, 1446f/1536f, 274f/684f, 1527f/1536f),
+        CardTarget(3, 344f/684f, 1487f/1536f, 278f/684f, 1446f/1536f, 410f/684f, 1527f/1536f),
+        CardTarget(4, 480f/684f, 1487f/1536f, 414f/684f, 1446f/1536f, 547f/684f, 1527f/1536f),
+        CardTarget(5, 616f/684f, 1487f/1536f, 551f/684f, 1446f/1536f, 682f/684f, 1527f/1536f)
     )
     private val calibratedHitboxes: Map<ZoneId, Hitbox> = emptyMap()
     fun villageCardPreview(number:Int,screenWidth:Int,screenHeight:Int):Pair<Int,Int>? {
