@@ -43,6 +43,7 @@ class GameAssistService : AccessibilityService() {
                 lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
                 showFloatingPanel()
                 if (!analyzing) statusView?.text = "Jeu Board Aventure détecté"
+                startAutomaticInitialAnalysis()
                 return
             }
             discoveryAttempts++
