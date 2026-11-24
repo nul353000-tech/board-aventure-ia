@@ -36,9 +36,9 @@ class OpenRouterVision {
         // Generic aliases and previously saved paid model IDs fall back to Gemma Free.
         val requestedModel = model.trim()
         val effectiveModel = when {
-            requestedModel == "openrouter/free" -> "google/gemma-4-26b-a4b-it:free"
+            requestedModel == "openrouter/free" || requestedModel.startsWith("google/") -> "nvidia/nemotron-3.5-super-vl:free"
             requestedModel.endsWith(":free") -> requestedModel
-            else -> "google/gemma-4-26b-a4b-it:free"
+            else -> "nvidia/nemotron-3.5-super-vl:free"
         }
         require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Capture d’écran invalide ou déjà libérée." }
         val stream = ByteArrayOutputStream()
@@ -81,10 +81,11 @@ class OpenRouterVision {
         // No paid model is included, so fallback cannot silently incur charges.
         val fallbackModels = org.json.JSONArray()
             .put(effectiveModel)
-            .put("google/gemma-4-31b-it:free")
             .put("inclusionai/ling-3.2-flash:free")
+            .put("dots-studio/dots-3-note-preview:free")
         val payload = JSONObject().put("models", fallbackModels).put("temperature", 0.1)
-            .put("max_tokens", 1200)
+            .put("max_tokens", 1600)
+            .put("reasoning", JSONObject().put("effort", "none"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
