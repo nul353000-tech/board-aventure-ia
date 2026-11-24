@@ -445,6 +445,11 @@ class GameAssistService : AccessibilityService() {
                         "Multiplicateur détecté : ${analysis.multiplier ?: "illisible"}\n" +
                         "Multiplicateur conseillé : x${plan.recommendedMultiplier} (prudent)\n" +
                         "Mode de lancer : ${spinStateLabel(analysis.spinState)}\n" +
+                        "Bâtiments endommagés : ${analysis.damagedBuildings?.let { if (it) "oui — réparer avant amélioration" else "non détectés" } ?: "à vérifier"}\n" +
+                        "Récompense gratuite : ${analysis.freeRewardAvailable?.let { if (it) "disponible" else "non détectée" } ?: "à vérifier"}\n" +
+                        "Boucliers : ${analysis.shieldCount ?: "illisible"}\n" +
+                        "Événements : ${analysis.activeEvents ?: "aucun confirmé"}\n" +
+                        "Village Mania : ${analysis.villageManiaActive?.let { if (it) "actif" else "inactif" } ?: "à vérifier"} · Village Master : ${analysis.villageMasterActive?.let { if (it) "actif" else "inactif" } ?: "à vérifier"} · Build Rush : ${analysis.buildRushActive?.let { if (it) "actif" else "inactif" } ?: "à vérifier"}\n" +
                         "Cartes village :\n" + formatVillageCards(analysis.coins, analysis.villageUpgradeCosts) +
                         "Cartes abordables après réserve : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
                         "Carte conseillée : ${plan.suggestedCard?.let { "n°$it" } ?: "aucune"}\n" +
@@ -499,7 +504,7 @@ class GameAssistService : AccessibilityService() {
 
     private fun spinStateLabel(value: String?): String = when (value?.lowercase()) {
         "ready" -> "prêt à lancer — maintien du bouton pour activer AUTO"
-        "auto_active" -> "AUTO actif (maintien SPIN) — STOP pour arrêter"
+        "auto_active" -> "AUTO actif — clic bref sur STOP pour arrêter"
         else -> "état inconnu — action bloquée"
     }
 
