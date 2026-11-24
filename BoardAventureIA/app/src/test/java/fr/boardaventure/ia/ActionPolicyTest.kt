@@ -73,6 +73,17 @@ class ActionPolicyTest {
         assertTrue(ActionPolicy.villageCardCalibrationStatus().contains("simulation uniquement"))
     }
 
+    @Test fun villageCardAuthorizationIsScopedToFiveConfirmedCards() {
+        for (number in 1..5) {
+            assertTrue(ActionPolicy.validateVillageCard(number, ActionPolicy.TARGET_PACKAGE, true, 0.99, 1080, 2400).allowed)
+        }
+        assertFalse(ActionPolicy.validateVillageCard(0, ActionPolicy.TARGET_PACKAGE, true, 0.99, 1080, 2400).allowed)
+        assertFalse(ActionPolicy.validateVillageCard(6, ActionPolicy.TARGET_PACKAGE, true, 0.99, 1080, 2400).allowed)
+        assertFalse(ActionPolicy.validateVillageCard(1, "com.other.app", true, 0.99, 1080, 2400).allowed)
+        assertFalse(ActionPolicy.validateVillageCard(1, ActionPolicy.TARGET_PACKAGE, true, 0.90, 1080, 2400).allowed)
+        assertFalse(ActionPolicy.validateVillageCard(1, ActionPolicy.TARGET_PACKAGE, true, 0.99, 1080, 1920).allowed)
+    }
+
     @Test fun malformedZoneGeometryIsRejected() {
         val invalid = ActionPolicy.Hitbox(ActionPolicy.ZoneId.SPIN, 0.8f, 0.8f, 0.2f, 0.2f, true)
         assertFalse(invalid.isValid())
