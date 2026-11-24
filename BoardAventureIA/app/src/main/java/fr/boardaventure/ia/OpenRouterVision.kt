@@ -21,9 +21,9 @@ data class GameAnalysis(
 
 class OpenRouterVision {
     private val client = OkHttpClient.Builder()
-        .callTimeout(45, TimeUnit.SECONDS)
+        .callTimeout(60, TimeUnit.SECONDS)
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(40, TimeUnit.SECONDS)
+        .readTimeout(50, TimeUnit.SECONDS)
         .build()
 
     suspend fun analyze(apiKey: String, model: String, bitmap: Bitmap): GameAnalysis = withContext(Dispatchers.IO) {
@@ -50,7 +50,7 @@ class OpenRouterVision {
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
-        val payload = JSONObject().put("model", model).put("temperature", 0.1).put("max_tokens", 900)
+        val payload = JSONObject().put("model", model).put("temperature", 0.1).put("max_tokens", 1600)
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
@@ -62,8 +62,14 @@ class OpenRouterVision {
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) error("OpenRouter HTTP ${response.code}: ${body.take(350)}")
-            val choices = JSONObject(body).optJSONArray("choices")
-                ?: error("Réponse OpenRouter invalide : aucune liste choices.")
+            val root = try { JSONObject(body) } catch (e: Exception) {
+                error("Réponse OpenRouter non JSON : ${body.take(300)}")
+            }
+            root.optJSONObject("error")?.let { apiError ->
+                error("OpenRouter : ${apiError.optString("message", "erreur API")} (code ${apiError.opt("code") ?: "inconnu"})")
+            }
+            val choices = root.optJSONArray("choices")
+                ?: error("Réponse OpenRouter sans choices. Modèle demandé : $model. Réponse : ${body.take(300)}")
             if (choices.length() == 0) error("OpenRouter n'a renvoyé aucun résultat.")
             val choice = choices.optJSONObject(0) ?: error("Premier choix OpenRouter vide.")
             val message = choice.optJSONObject("message") ?: error("Message OpenRouter absent.")
@@ -79,8 +85,17 @@ class OpenRouterVision {
                 else -> ""
             }
             if (raw.isBlank()) {
-                val refusal = message.optString("refusal", "")
-                error("Réponse IA vide. ${if (refusal.isNotBlank()) "Refus : $refusal" else "Vérifie le modèle vision OpenRouter."}")
+                val finish = choice.optString("finish_reason", "inconnu")
+                val nativeFinish = choice.optString("native_finish_reason", "")
+                val refusalValue = message.opt("refusal")
+                val refusal = if (refusalValue is String) refusalValue else ""
+                val returnedModel = root.optString("model", model)
+                val diagnostic = when {
+                    refusal.isNotBlank() -> "Refus du modèle : ${refusal.take(180)}"
+                    finish == "length" -> "Réponse coupée par la limite de tokens."
+                    else -> "Le fournisseur n'a renvoyé aucun texte final."
+                }
+                error("Réponse IA vide. Modèle servi : $returnedModel. Fin : $finish${if (nativeFinish.isNotBlank()) " ($nativeFinish)" else ""}. $diagnostic")
             }
             val cleaned = raw.replace("```json", "").replace("```", "").trim()
             val start = cleaned.indexOf('{')
