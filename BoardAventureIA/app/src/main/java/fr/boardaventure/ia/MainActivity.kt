@@ -2,11 +2,11 @@ package fr.boardaventure.ia
 
 import android.content.ComponentName
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.text.TextUtils
+import android.text.method.PasswordTransformationMethod
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
         key = EditText(this).apply {
             hint = "Clé API OpenRouter"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            transformationMethod = PasswordTransformationMethod.getInstance()
             setText(store.apiKey().orEmpty())
             isSingleLine = true
         }
@@ -73,13 +74,16 @@ class MainActivity : ComponentActivity() {
                 val apiKey = key.text.toString().trim()
                 val modelId = model.text.toString().trim()
                 if (apiKey.isBlank()) {
-                    status.text = "Saisis ta clé API OpenRouter."
+                    status.text = "Saisis ta nouvelle clé API OpenRouter."
                 } else if (modelId.isBlank()) {
                     status.text = "Saisis un identifiant de modèle vision."
                 } else {
                     store.saveApiKey(apiKey)
                     store.saveModel(modelId)
                     status.text = "Configuration enregistrée. Clé chiffrée sur l'appareil."
+                    key.text?.clear()
+                    key.hint = "Clé enregistrée (masquée) · saisir pour remplacer"
+                    refreshStatus()
                 }
             }
         })
