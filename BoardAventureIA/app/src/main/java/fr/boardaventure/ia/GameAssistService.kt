@@ -536,9 +536,35 @@ class GameAssistService : AccessibilityService() {
 
 
     private fun dispatchPlannedMultiplier(multiplierText: String?, confidence: Double): String? {
-        // Screenshot evidence showed OCR x2 while the actual button displayed x3.
-        // Keep this control locked until its value is independently verified.
-        return "multiplicateur verrouillé : lecture OCR non fiable (écart constaté avec le bouton)"
+        val value = multiplierText?.trim()?.lowercase()?.removePrefix("x")?.toIntOrNull()
+            ?: return "multiplicateur inchangé : valeur illisible"
+        if (value == ResourceStrategy.DEFAULT_MULTIPLIER) {
+            multiplierAdjustmentAttempts = 0
+            return null
+        }
+        if (multiplierAdjustmentAttempts >= MAX_MULTIPLIER_STEPS) {
+            multiplierAdjustmentAttempts = 0
+            return "multiplicateur en pause : x1 non retrouvé après $MAX_MULTIPLIER_STEPS étapes"
+        }
+        if (!isGameVisible()) return "multiplicateur en pause : jeu non visible"
+        val metrics = resources.displayMetrics
+        val point = ActionPolicy.controlPreview("multiplier", metrics.widthPixels, metrics.heightPixels)
+            ?: return "multiplicateur en pause : écran non calibré"
+        val decision = ActionPolicy.validate(ActionPolicy.TARGET_PACKAGE, true, confidence, "set_multiplier", point.first, point.second, metrics.widthPixels, metrics.heightPixels)
+        if (!decision.allowed) return "multiplicateur en pause : ${decision.explanation}"
+        multiplierAdjustmentAttempts++
+        GameGestureController.tap(this, GameGestureController.Target(point.first.toFloat(), point.second.toFloat()), decision.allowed) { ok ->
+            mainHandler.post {
+                if (ok) {
+                    statusView?.text = "Multiplicateur modifié une étape · lecture de contrôle…"
+                    mainHandler.postDelayed({ if (isGameVisible() && !analyzing) analyzeCurrentScreen() }, POST_GESTURE_VERIFY_MS)
+                } else {
+                    multiplierAdjustmentAttempts = 0
+                    statusView?.text = "Multiplicateur : geste refusé, aucune autre étape"
+                }
+            }
+        }
+        return "une étape de multiplicateur envoyée; nouvelle lecture obligatoire avant toute autre étape"
     }
 
     private fun dispatchPlannedVillageUpgrade(
