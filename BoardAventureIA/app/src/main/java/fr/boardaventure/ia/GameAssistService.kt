@@ -30,6 +30,7 @@ class GameAssistService : AccessibilityService() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
     private var panel: LinearLayout? = null
+    private var panelLayoutParams: WindowManager.LayoutParams? = null
     private var analyzeButton: TextView? = null
     private var statusView: TextView? = null
     private var resultView: TextView? = null
@@ -45,6 +46,20 @@ class GameAssistService : AccessibilityService() {
     private var lastForegroundPackage = "Application en attente"
     private var discoveryAttempts = 0
     private var autoAnalysisStartedForSession = false
+
+    // Safe UI-only automation: collapse the panel after 30 seconds without interaction.
+    private val idleCollapseRunnable = Runnable {
+        if (!analyzing && panel != null && !minimized && isGameVisible()) {
+            minimizeFloatingPanel()
+        }
+    }
+
+    private fun scheduleIdleCollapse() {
+        mainHandler.removeCallbacks(idleCollapseRunnable)
+        if (!analyzing && panel != null && !minimized) {
+            mainHandler.postDelayed(idleCollapseRunnable, 30_000L)
+        }
+    }
 
     private val discoveryRunnable = object : Runnable {
         override fun run() {
@@ -112,6 +127,7 @@ class GameAssistService : AccessibilityService() {
     override fun onDestroy() {
         mainHandler.removeCallbacks(discoveryRunnable)
         mainHandler.removeCallbacks(autoAnalysisRunnable)
+        mainHandler.removeCallbacks(idleCollapseRunnable)
         removeFloatingPanel()
         scope.cancel()
         instance = null
@@ -182,7 +198,10 @@ class GameAssistService : AccessibilityService() {
                 setColor(Color.rgb(30, 105, 190))
                 cornerRadius = 16f
             }
-            setOnClickListener { analyzeCurrentScreen() }
+            setOnClickListener {
+                mainHandler.removeCallbacks(idleCollapseRunnable)
+                analyzeCurrentScreen()
+            }
         }
         val status = TextView(this).apply {
             text = "Assistant actif"
@@ -236,6 +255,7 @@ class GameAssistService : AccessibilityService() {
         }
         try {
             windowManager?.addView(root, params)
+            panelLayoutParams = params
             panel = root
             dragHandleView = dragHandle
             minimizeButton = minimize
@@ -250,6 +270,7 @@ class GameAssistService : AccessibilityService() {
 
     private fun minimizeFloatingPanel() {
         if (minimized || analyzing) return
+        mainHandler.removeCallbacks(idleCollapseRunnable)
         minimized = true
         dragHandleView?.visibility = View.GONE
         minimizeButton?.visibility = View.GONE
@@ -285,11 +306,13 @@ class GameAssistService : AccessibilityService() {
             params.y = 180
             runCatching { panel?.let { windowManager?.updateViewLayout(it, params) } }
         }
+        scheduleIdleCollapse()
     }
 
     private fun removeFloatingPanel() {
         panel?.let { view -> runCatching { windowManager?.removeView(view) } }
         panel = null
+        panelLayoutParams = null
         minimized = false
         dragHandleView = null
         minimizeButton = null
@@ -433,6 +456,7 @@ class GameAssistService : AccessibilityService() {
             text = buttonText
             isEnabled = true
         }
+        scheduleIdleCollapse()
     }
 
     companion object {
