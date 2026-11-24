@@ -65,7 +65,9 @@ object ResourceStrategy {
                 currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
                 bonus > 0L -> SpinCommand.TAP_SINGLE
                 currentEnergy < DEFAULT_ENERGY_RESERVE + 20L -> SpinCommand.TAP_SINGLE
-                else -> SpinCommand.HOLD_TO_START_AUTO
+                // Do not start a long press until the service has a live watchdog
+                // that can re-read energy and stop on uncertainty or app changes.
+                else -> SpinCommand.WAIT
             }
             else -> SpinCommand.BLOCKED
         }
