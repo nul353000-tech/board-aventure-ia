@@ -37,7 +37,10 @@ object ResourceStrategy {
         energyBonusText: String?,
         multiplierText: String?,
         spinState: String?,
-        villageCostsText: String?
+        villageCostsText: String?,
+        energyReserve: Long = DEFAULT_ENERGY_RESERVE,
+        bonusReserve: Long = DEFAULT_BONUS_RESERVE,
+        coinReservePercent: Long = DEFAULT_COIN_RESERVE_PERCENT
     ): Plan {
         if (!recognized || !confidence.isFinite() || confidence < ActionPolicy.MIN_CONFIDENCE || confidence > 1.0) {
             return blocked("Jeu ou lecture non fiable.")
@@ -49,7 +52,7 @@ object ResourceStrategy {
         val totalEnergy = if (currentEnergy != null && bonus != null) currentEnergy + bonus else null
         val multiplier = parseMultiplier(multiplierText)
         val coins = parseLong(coinsText)
-        val reserve = coins?.let { it * DEFAULT_COIN_RESERVE_PERCENT / 100L }
+        val reserve = coins?.let { it * coinReservePercent.coerceIn(0L, 30L) / 100L }
         val costs = parseCosts(villageCostsText)
         val affordable = if (coins != null && reserve != null) {
             costs.mapIndexedNotNull { index, cost ->
@@ -65,10 +68,10 @@ object ResourceStrategy {
             "auto_active" -> SpinCommand.TAP_STOP
             "ready" -> when {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
-                currentEnergy <= DEFAULT_ENERGY_RESERVE && bonus > 0L -> SpinCommand.TAP_SINGLE
+                currentEnergy <= energyReserve.coerceIn(0L, 100L) && bonus > 0L -> SpinCommand.TAP_SINGLE
                 currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
-                bonus > DEFAULT_BONUS_RESERVE -> SpinCommand.TAP_SINGLE
-                currentEnergy < DEFAULT_ENERGY_RESERVE + 20L -> SpinCommand.TAP_SINGLE
+                bonus > bonusReserve.coerceIn(0L, 50L) -> SpinCommand.TAP_SINGLE
+                currentEnergy < energyReserve.coerceIn(0L, 100L) + 20L -> SpinCommand.TAP_SINGLE
                 else -> SpinCommand.WAIT
             }
             else -> SpinCommand.BLOCKED
@@ -82,9 +85,9 @@ object ResourceStrategy {
             append(" · total disponible: ")
             append(totalEnergy?.toString() ?: "inconnu")
             append(" · réserve normale: ")
-            append(DEFAULT_ENERGY_RESERVE)
+            append(energyReserve.coerceIn(0L, 100L))
             append(" · réserve tours bonus: ")
-            append(DEFAULT_BONUS_RESERVE)
+            append(bonusReserve.coerceIn(0L, 50L))
             append(". Multiplicateur affiché: x")
             append(multiplier ?: "illisible")
             append(". Multiplicateur recommandé: x")
