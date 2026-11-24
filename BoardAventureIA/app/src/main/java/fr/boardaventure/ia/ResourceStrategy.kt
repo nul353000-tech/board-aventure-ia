@@ -64,7 +64,6 @@ object ResourceStrategy {
                 // A short, hard-capped AUTO burst is allowed only at x1 and with
                 // a buffer above the protected reserve. The service arms its
                 // independent 15-second watchdog immediately after the hold.
-                currentEnergy > DEFAULT_ENERGY_RESERVE + 30L && multiplier == DEFAULT_MULTIPLIER -> SpinCommand.HOLD_TO_START_AUTO
                 else -> SpinCommand.WAIT
             }
             else -> SpinCommand.BLOCKED
@@ -88,7 +87,7 @@ object ResourceStrategy {
             append(reserve?.toString() ?: "inconnue")
             append(". ")
             append(if (suggested == null) "Aucune carte achetable avec la réserve." else "Carte village conseillée: $suggested.")
-            append(" AUTO autorisé uniquement à x1 avec marge d’énergie et arrêt temporisé indépendant à 15 secondes.")
+            append(" AUTO verrouillé tant que le multiplicateur n’est pas vérifié indépendamment.")
             append(" Les achats, gemmes et paiements restent interdits.")
         }
 
