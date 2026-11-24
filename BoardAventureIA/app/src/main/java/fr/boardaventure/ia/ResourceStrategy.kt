@@ -69,7 +69,7 @@ object ResourceStrategy {
             "ready" -> when {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
                 currentEnergy <= energyReserve.coerceIn(0L, 100L) && bonus > 0L -> SpinCommand.TAP_SINGLE
-                currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
+                currentEnergy <= energyReserve.coerceIn(0L, 100L) -> SpinCommand.WAIT
                 bonus > bonusReserve.coerceIn(0L, 50L) -> SpinCommand.TAP_SINGLE
                 currentEnergy < energyReserve.coerceIn(0L, 100L) + 20L -> SpinCommand.TAP_SINGLE
                 else -> SpinCommand.WAIT
@@ -94,10 +94,13 @@ object ResourceStrategy {
             append(DEFAULT_MULTIPLIER)
             append(" (choix prudent : rendement par énergie non mesuré).")
             append(". Réserve pièces: ")
+            append(coinReservePercent.coerceIn(0L, 30L))
+            append("% (")
             append(reserve?.toString() ?: "inconnue")
+            append(")")
             append(". ")
             append(if (suggested == null) "Aucune carte achetable avec la réserve." else "Carte village conseillée: $suggested.")
-            append(" Réserve protégée: 5 tours bonus. AUTO suspendu tant que le multiplicateur n’est pas confirmé par une lecture fiable.")
+            append(" AUTO suspendu tant que le multiplicateur n’est pas confirmé par une lecture fiable.")
             append(" Les achats, gemmes et paiements restent interdits.")
         }
 
