@@ -13,7 +13,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
 data class GameAnalysis(
-    val recognized: Boolean, val confidence: Double, val turns: String?, val bonusTurns: String?,
+    val recognized: Boolean, val confidence: Double, 
     val coins: String?, val gems: String?, val stars: String?, val energy: String?,
     val energyBonus: String?, val multiplier: String?, val screen: String, val recommendation: String, val action: String,
     val x: Int?, val y: Int?, val reason: String
@@ -49,7 +49,7 @@ class OpenRouterVision {
 
         val systemPrompt = "Tu es l'agent de vision du jeu Board Aventure (package com.moonactive.cmboard). " +
             "Analyse uniquement ce qui est visible, sans inventer. Réponds en JSON strict avec recognized(boolean), " +
-            "confidence(number 0..1), screen(string), turns(string|null), bonus_turns(string|null), coins(string|null), " +
+            "confidence(number 0..1), screen(string), coins(string|null), " +
             "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), recommendation(string), " +
             "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
@@ -59,7 +59,7 @@ class OpenRouterVision {
             "environ x=36-60% et y=7-12%; énergie en bas au centre, x=32-68% et y=92-97%; bonus d'énergie sous cette barre, " +
             "x=38-63% et y=97-100%; multiplicateur de lancer en bas à droite près du gros bouton rouge, x=68-85% et y=84-90%; " +
             "compteur bonus visible près de la progression supérieure, x=65-78% et y=22-28%. " +
-            "Repère et lis systématiquement les étoiles, les tours principaux disponibles et les tours supplémentaires/bonus " +
+            "Repère et lis systématiquement les étoiles, les compteurs de ressources " +
             "en utilisant aussi les captures de référence déjà fournies par l'utilisateur: ne les considère pas comme absents " +
             "simplement parce qu'ils ne sont pas dans les zones pièces/gemmes/énergie. Distingue clairement tours principaux, " +
             "tours supplémentaires/bonus et énergie; ne les additionne jamais et ne confonds pas l'énergie avec les tours. " +
@@ -68,10 +68,10 @@ class OpenRouterVision {
             "Un panneau flottant peut cacher une partie de l'écran: ne devine jamais les chiffres réellement cachés, " +
             "mais continue de lire les autres compteurs visibles. " +
             "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
-        val userPrompt = "Lis tous les compteurs visibles: étoiles, tours principaux, tours supplémentaires/bonus, énergie actuelle/maximale, " +
+        val userPrompt = "Lis tous les compteurs visibles: étoiles, énergie actuelle/maximale, " +
             "bonus d'énergie, pièces, gemmes et multiplicateur. Donne null seulement si un nombre est réellement illisible. " +
-            "Ne confonds et n'additionne jamais tours, tours bonus et énergie. " +
-            "Règles: réserve 5 tours; limite de lancers all; arrêt both; ne pas arrêter à la fin d'une progression liée. " +
+            "" +
+            "" +
             "Réponds avec un JSON compact, sans explication, exactement selon le schéma."
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
@@ -171,7 +171,7 @@ class OpenRouterVision {
                 error("Action IA inconnue : $action")
             }
             GameAnalysis(
-                recognized, confidence, textField("turns"), textField("bonus_turns"),
+                recognized, confidence, 
                 textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"),
                 textField("screen") ?: "inconnu", textField("recommendation") ?: "", action,
                 intField("x"), intField("y"), textField("reason") ?: ""
