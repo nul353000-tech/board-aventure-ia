@@ -450,16 +450,16 @@ class GameAssistService : AccessibilityService() {
     }
 
     private fun formatVillageCards(coinsText: String?, costsText: String?): String {
-        if (costsText.isNullOrBlank()) return "Cartes village : non détectées\\n"
+        if (costsText.isNullOrBlank()) return "Cartes village : non détectées\n"
         val coins = coinsText?.filter { it.isDigit() }?.toLongOrNull()
         val costs = costsText.split(",")
         return buildString {
-            append("Cartes village (gauche → droite) :\\n")
+            append("Cartes village (gauche → droite) :\n")
             costs.forEachIndexed { index, raw ->
                 val cost = raw.trim().filter { it.isDigit() }.toLongOrNull()
                 append("Carte ${index + 1} : ")
                 append(if (cost == null || raw.trim() == "-1") "prix illisible" else formatCoins(cost))
-                append("\\n")
+                append("\n")
             }
             val affordable = costs.mapIndexedNotNull { index, raw ->
                 val cost = raw.trim().filter { it.isDigit() }.toLongOrNull()
@@ -467,7 +467,7 @@ class GameAssistService : AccessibilityService() {
             }
             append("Abordables : ")
             append(if (coins == null) "solde illisible" else if (affordable.isEmpty()) "aucune" else affordable.joinToString(", ") { "carte $it" })
-            append("\\n")
+            append("\n")
         }
     }
 
