@@ -55,6 +55,18 @@ class ActionPolicyTest {
         assertTrue(ActionPolicy.calibrationStatus().contains("VILLAGE_UPGRADE"))
     }
 
+    @Test fun villageCardTargetsArePreviewOnlyAndNumberedLeftToRight() {
+        val width = 684
+        val height = 1536
+        val centers = (1..5).mapNotNull { ActionPolicy.villageCardPreview(it, width, height) }
+        assertTrue(centers.size == 5)
+        assertTrue(centers.zipWithNext().all { (a, b) -> a.first < b.first })
+        assertTrue(centers.all { it.second in 1478..1525 })
+        assertTrue(ActionPolicy.villageCardPreview(6, width, height) == null)
+        assertTrue(ActionPolicy.villageCardPreview(1, 1080, 2400) == null)
+        assertTrue(ActionPolicy.villageCardCalibrationStatus().contains("simulation uniquement"))
+    }
+
     @Test fun malformedZoneGeometryIsRejected() {
         val invalid = ActionPolicy.Hitbox(ActionPolicy.ZoneId.SPIN, 0.8f, 0.8f, 0.2f, 0.2f, true)
         assertFalse(invalid.isValid())
