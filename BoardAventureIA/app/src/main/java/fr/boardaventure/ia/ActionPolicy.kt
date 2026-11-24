@@ -50,6 +50,9 @@ object ActionPolicy {
         "MULTIPLIER", 535f/684f, 1335f/1536f,
         465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f
     )
+    // False until real SPIN / STOP / village hitboxes are tested on Pixel 10a.
+    // Screenshot coordinates alone are not device calibration.
+    const val DEVICE_GESTURE_CALIBRATION_CONFIRMED = false
     private val calibratedHitboxes: Map<ZoneId, Hitbox> = emptyMap()
 
     fun controlPreview(name: String, screenWidth: Int, screenHeight: Int): Pair<Int, Int>? {
