@@ -57,13 +57,17 @@ class OpenRouterVision {
             "Un panneau flottant peut cacher une partie de l'écran: ne devine jamais les chiffres réellement cachés, " +
             "mais continue de lire les autres compteurs visibles. " +
             "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
-        val userPrompt = "Règles: réserve de 5 tours, limite de lancers=all, arrêt=both. " +
-            "Gemmes gagnées utilisables uniquement si cela améliore clairement la progression. " +
-            "Ne pas arrêter seulement parce qu'une progression liée est terminée. Retourne uniquement le JSON demandé."
+        val userPrompt = "Lis tous les compteurs visibles: étoiles, tours principaux, tours supplémentaires/bonus, énergie, " +
+            "pièces, gemmes et multiplicateur. Donne null seulement si un nombre est réellement illisible. " +
+            "Ne confonds et n'additionne jamais tours, tours bonus et énergie. " +
+            "Règles: réserve 5 tours; limite de lancers all; arrêt both; ne pas arrêter à la fin d'une progression liée. " +
+            "Réponds avec un JSON compact, sans explication, exactement selon le schéma."
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
-        val payload = JSONObject().put("model", model).put("temperature", 0.1).put("max_tokens", 1600)
+        val payload = JSONObject().put("model", model).put("temperature", 0.1)
+            .put("max_tokens", 4096)
+            .put("reasoning", JSONObject().put("effort", "none"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
@@ -98,6 +102,9 @@ class OpenRouterVision {
                 else -> ""
             }
             if (raw.isBlank()) {
+                val usage = root.optJSONObject("usage")
+                val completion = usage?.optInt("completion_tokens", -1) ?: -1
+                val reasoningTokens = usage?.optJSONObject("completion_tokens_details")?.optInt("reasoning_tokens", -1) ?: -1
                 val finish = choice.optString("finish_reason", "inconnu")
                 val nativeFinish = choice.optString("native_finish_reason", "")
                 val refusalValue = message.opt("refusal")
@@ -108,7 +115,7 @@ class OpenRouterVision {
                     finish == "length" -> "Réponse coupée par la limite de tokens."
                     else -> "Le fournisseur n'a renvoyé aucun texte final."
                 }
-                error("Réponse IA vide. Modèle servi : $returnedModel. Fin : $finish${if (nativeFinish.isNotBlank()) " ($nativeFinish)" else ""}. $diagnostic")
+                error("Réponse IA vide. Modèle servi : $returnedModel. Fin : $finish${if (nativeFinish.isNotBlank()) " ($nativeFinish)" else ""}. Tokens sortie=$completion, raisonnement=$reasoningTokens. $diagnostic")
             }
             val cleaned = raw.replace("```json", "").replace("```", "").trim()
             val start = cleaned.indexOf('{')
