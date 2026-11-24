@@ -30,11 +30,11 @@ object ActionPolicy {
         val verifiedForDevice: Boolean = false
     )
     private val villageCardTargets = listOf(
-        CardTarget(1, 72f/684f, 1487f/1536f, 7f/684f, 1446f/1536f, 137f/684f, 1527f/1536f),
-        CardTarget(2, 208f/684f, 1487f/1536f, 143f/684f, 1446f/1536f, 274f/684f, 1527f/1536f),
-        CardTarget(3, 344f/684f, 1487f/1536f, 278f/684f, 1446f/1536f, 410f/684f, 1527f/1536f),
-        CardTarget(4, 480f/684f, 1487f/1536f, 414f/684f, 1446f/1536f, 547f/684f, 1527f/1536f),
-        CardTarget(5, 616f/684f, 1487f/1536f, 551f/684f, 1446f/1536f, 682f/684f, 1527f/1536f)
+        CardTarget(1, 72f/684f, 1487f/1536f, 7f/684f, 1446f/1536f, 137f/684f, 1527f/1536f, true),
+        CardTarget(2, 208f/684f, 1487f/1536f, 143f/684f, 1446f/1536f, 274f/684f, 1527f/1536f, true),
+        CardTarget(3, 344f/684f, 1487f/1536f, 278f/684f, 1446f/1536f, 410f/684f, 1527f/1536f, true),
+        CardTarget(4, 480f/684f, 1487f/1536f, 414f/684f, 1446f/1536f, 547f/684f, 1527f/1536f, true),
+        CardTarget(5, 616f/684f, 1487f/1536f, 551f/684f, 1446f/1536f, 682f/684f, 1527f/1536f, true)
     )
     // Main board controls measured from the 684x1536 gameplay screenshot.
     // Dry-run coordinates only; never authorize a tap.
