@@ -6,7 +6,7 @@ object ActionPolicy {
 
     data class Decision(val allowed: Boolean, val explanation: String)
 
-    enum class ZoneId { SPIN, FREE_REWARD, VILLAGE_UPGRADE }
+    enum class ZoneId { SPIN, MULTIPLIER, FREE_REWARD, VILLAGE_UPGRADE }
 
     data class Hitbox(
         val zone: ZoneId,
@@ -36,14 +36,40 @@ object ActionPolicy {
         CardTarget(4, 480f/684f, 1487f/1536f, 414f/684f, 1446f/1536f, 547f/684f, 1527f/1536f),
         CardTarget(5, 616f/684f, 1487f/1536f, 551f/684f, 1446f/1536f, 682f/684f, 1527f/1536f)
     )
+    // Main board controls measured from the 684x1536 gameplay screenshot.
+    // Dry-run coordinates only; never authorize a tap.
+    data class ControlTarget(
+        val name: String, val centerX: Float, val centerY: Float,
+        val left: Float, val top: Float, val right: Float, val bottom: Float
+    )
+    private val spinTarget = ControlTarget(
+        "SPIN", 344f/684f, 1310f/1536f,
+        220f/684f, 1208f/1536f, 466f/684f, 1415f/1536f
+    )
+    private val multiplierTarget = ControlTarget(
+        "MULTIPLIER", 535f/684f, 1335f/1536f,
+        465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f
+    )
     private val calibratedHitboxes: Map<ZoneId, Hitbox> = emptyMap()
+
+    fun controlPreview(name: String, screenWidth: Int, screenHeight: Int): Pair<Int, Int>? {
+        if (screenWidth <= 1 || screenHeight <= 1) return null
+        if (kotlin.math.abs(screenWidth.toFloat() / screenHeight - 684f / 1536f) > 0.015f) return null
+        val target = when (name.lowercase()) {
+            "spin" -> spinTarget
+            "multiplier" -> multiplierTarget
+            else -> return null
+        }
+        return (target.centerX * screenWidth).toInt() to (target.centerY * screenHeight).toInt()
+    }
+
     fun villageCardPreview(number:Int,screenWidth:Int,screenHeight:Int):Pair<Int,Int>? {
         if(screenWidth<=1||screenHeight<=1) return null
         if(kotlin.math.abs(screenWidth.toFloat()/screenHeight-684f/1536f)>0.015f) return null
         val t=villageCardTargets.firstOrNull{it.number==number}?:return null
         return (t.centerX*screenWidth).toInt() to (t.centerY*screenHeight).toInt()
     }
-    fun villageCardCalibrationStatus():String = "5 cartes repérées sur la capture; simulation uniquement, validation tactile réelle requise."
+    fun villageCardCalibrationStatus():String = "5 cartes, bouton spin et sélecteur multiplicateur repérés sur captures; simulation uniquement, validation tactile réelle requise."
     fun calibrationStatus(): String {
         val missing = ZoneId.values().filterNot { zone ->
             calibratedHitboxes[zone]?.let { it.isValid() && it.verifiedForDevice } == true
