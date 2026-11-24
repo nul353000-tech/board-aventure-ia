@@ -6,6 +6,7 @@ package fr.boardaventure.ia
  */
 object ResourceStrategy {
     const val DEFAULT_ENERGY_RESERVE = 20L
+    const val DEFAULT_BONUS_RESERVE = 5L
     const val DEFAULT_COIN_RESERVE_PERCENT = 10L
     const val DEFAULT_MULTIPLIER = 1
 
@@ -59,7 +60,7 @@ object ResourceStrategy {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
                 currentEnergy <= DEFAULT_ENERGY_RESERVE && bonus > 0L -> SpinCommand.TAP_SINGLE
                 currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
-                bonus > 0L -> SpinCommand.TAP_SINGLE
+                bonus > DEFAULT_BONUS_RESERVE -> SpinCommand.TAP_SINGLE
                 currentEnergy < DEFAULT_ENERGY_RESERVE + 20L -> SpinCommand.TAP_SINGLE
                 else -> SpinCommand.WAIT
             }
@@ -75,6 +76,8 @@ object ResourceStrategy {
             append(totalEnergy?.toString() ?: "inconnu")
             append(" · réserve normale: ")
             append(DEFAULT_ENERGY_RESERVE)
+            append(" · réserve tours bonus: ")
+            append(DEFAULT_BONUS_RESERVE)
             append(". Multiplicateur affiché: x")
             append(multiplier ?: "illisible")
             append(". Multiplicateur recommandé: x")
@@ -84,7 +87,7 @@ object ResourceStrategy {
             append(reserve?.toString() ?: "inconnue")
             append(". ")
             append(if (suggested == null) "Aucune carte achetable avec la réserve." else "Carte village conseillée: $suggested.")
-            append(" AUTO suspendu tant que le multiplicateur n’est pas confirmé par une lecture fiable.")
+            append(" Réserve protégée: 5 tours bonus. AUTO suspendu tant que le multiplicateur n’est pas confirmé par une lecture fiable.")
             append(" Les achats, gemmes et paiements restent interdits.")
         }
 
