@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 data class GameAnalysis(
     val recognized: Boolean, val confidence: Double, 
     val coins: String?, val gems: String?, val stars: String?, val energy: String?,
-    val energyBonus: String?, val multiplier: String?, val screen: String, val recommendation: String, val action: String,
+    val energyBonus: String?, val multiplier: String?, val villageUpgradeCost: String?, val screen: String, val recommendation: String, val action: String,
     val x: Int?, val y: Int?, val reason: String
 )
 
@@ -50,7 +50,7 @@ class OpenRouterVision {
         val systemPrompt = "Tu es l'agent de vision du jeu Board Aventure (package com.moonactive.cmboard). " +
             "Analyse uniquement ce qui est visible, sans inventer. Réponds en JSON strict avec recognized(boolean), " +
             "confidence(number 0..1), screen(string), coins(string|null), " +
-            "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), recommendation(string), " +
+            "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), village_upgrade_cost(string|null), recommendation(string), " +
             "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
             "Tours, bonus, pièces et gemmes peuvent monter ou baisser ; étoiles seulement augmenter. " +
@@ -67,9 +67,9 @@ class OpenRouterVision {
             "de progression. Les étoiles sont un compteur monotone (elles ne font qu'augmenter). " +
             "Un panneau flottant peut cacher une partie de l'écran: ne devine jamais les chiffres réellement cachés, " +
             "mais continue de lire les autres compteurs visibles. " +
-            "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
+            "Lis aussi le coût exact affiché pour la prochaine amélioration du village, uniquement si le prix est clairement visible; village_upgrade_cost doit contenir uniquement les chiffres, sans séparateur ni symbole, sinon null. Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
         val userPrompt = "Lis tous les compteurs visibles: étoiles, énergie actuelle/maximale, " +
-            "bonus d'énergie, pièces, gemmes et multiplicateur. Donne null seulement si un nombre est réellement illisible. " +
+            "bonus d'énergie, pièces, gemmes, multiplicateur et prix de la prochaine amélioration du village s'il est affiché. Le prix doit être un entier en chiffres uniquement. Donne null seulement si un nombre est réellement illisible. " +
             "" +
             "" +
             "Réponds avec un JSON compact, sans explication, exactement selon le schéma."
@@ -172,7 +172,7 @@ class OpenRouterVision {
             }
             GameAnalysis(
                 recognized, confidence, 
-                textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"),
+                textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"), textField("village_upgrade_cost"),
                 textField("screen") ?: "inconnu", textField("recommendation") ?: "", action,
                 intField("x"), intField("y"), textField("reason") ?: ""
             )
