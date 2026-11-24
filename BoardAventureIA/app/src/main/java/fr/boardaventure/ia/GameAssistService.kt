@@ -431,6 +431,7 @@ class GameAssistService : AccessibilityService() {
                     spinState = analysis.spinState,
                     villageCostsText = analysis.villageUpgradeCosts
                 )
+                val gestureStatus = if (recognized) dispatchPlannedSpin(plan.spinCommand) else "bloqué : jeu non reconnu"
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
@@ -447,6 +448,7 @@ class GameAssistService : AccessibilityService() {
                         "Cartes abordables après réserve : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
                         "Carte conseillée : ${plan.suggestedCard?.let { "n°$it" } ?: "aucune"}\n" +
                         "Décision lancer : ${spinCommandLabel(plan.spinCommand)}\n" +
+                        "Geste automatique : $gestureStatus\n" +
                         "Plan ressources : ${plan.explanation}\n" +
                         "Conseil IA : ${analysis.recommendation}\n" +
                         "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
@@ -463,6 +465,27 @@ class GameAssistService : AccessibilityService() {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
+    }
+
+    private fun dispatchPlannedSpin(command: ResourceStrategy.SpinCommand): String {
+        if (!ActionPolicy.DEVICE_GESTURE_CALIBRATION_CONFIRMED) return "verrouillé : validation tactile Pixel 10a requise"
+        if (!isGameVisible()) return "bloqué : jeu non visible"
+        val metrics = resources.displayMetrics
+        val point = ActionPolicy.controlPreview("spin", metrics.widthPixels, metrics.heightPixels)
+            ?: return "bloqué : dimensions écran non calibrées"
+        val target = GameGestureController.Target(point.first.toFloat(), point.second.toFloat())
+        val completion: (Boolean) -> Unit = { ok ->
+            mainHandler.post { statusView?.text = if (ok) "Geste envoyé" else "Geste refusé ou annulé" }
+        }
+        when (command) {
+            ResourceStrategy.SpinCommand.TAP_SINGLE, ResourceStrategy.SpinCommand.TAP_STOP ->
+                GameGestureController.tap(this, target, true, completion)
+            ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO ->
+                GameGestureController.hold(this, target, authorized = true, callback = completion)
+            ResourceStrategy.SpinCommand.WAIT -> return "attente : ressources surveillées"
+            ResourceStrategy.SpinCommand.BLOCKED -> return "bloqué : données insuffisantes"
+        }
+        return "geste envoyé au service Android"
     }
 
     private fun spinCommandLabel(value: ResourceStrategy.SpinCommand): String = when (value) {
