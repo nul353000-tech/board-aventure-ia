@@ -41,7 +41,7 @@ class GameAssistService : AccessibilityService() {
             if (isGameVisible()) {
                 lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
                 showFloatingPanel()
-                statusView?.text = "Jeu Board Aventure détecté"
+                if (!analyzing) statusView?.text = "Jeu Board Aventure détecté"
                 return
             }
             discoveryAttempts++
@@ -55,7 +55,7 @@ class GameAssistService : AccessibilityService() {
         if (gameIsActive) {
             lastForegroundPackage = ActionPolicy.TARGET_PACKAGE
             showFloatingPanel()
-            statusView?.text = "Jeu Board Aventure détecté"
+            if (!analyzing) statusView?.text = "Jeu Board Aventure détecté"
             return
         }
         val isWindowTransition =
@@ -83,7 +83,7 @@ class GameAssistService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        statusView?.text = "Assistant interrompu"
+        if (!analyzing) statusView?.text = "Assistant interrompu"
     }
 
     override fun onServiceConnected() {
@@ -291,7 +291,10 @@ class GameAssistService : AccessibilityService() {
                 resultView?.visibility = View.VISIBLE
                 finishAnalysis(if (recognized) "Analyse terminée" else "Jeu non reconnu", "ANALYSER")
             } catch (e: Exception) {
-                finishAnalysis("Erreur IA : ${e.message ?: e.javaClass.simpleName}", "RÉESSAYER")
+                val error = "Erreur IA : ${e.message ?: e.javaClass.simpleName}"
+                resultView?.text = error
+                resultView?.visibility = View.VISIBLE
+                finishAnalysis(error, "RÉESSAYER")
             } finally {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
@@ -300,7 +303,7 @@ class GameAssistService : AccessibilityService() {
 
     private fun finishAnalysis(message: String, buttonText: String) {
         analyzing = false
-        statusView?.text = "$message · écran : $lastForegroundPackage"
+        statusView?.text = message
         analyzeButton?.apply {
             text = buttonText
             isEnabled = true
