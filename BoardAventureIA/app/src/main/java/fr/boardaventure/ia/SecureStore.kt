@@ -33,5 +33,5 @@ class SecureStore(context: Context) {
         String(c.doFinal(b.copyOfRange(12, b.size)))
     }.getOrNull()
     fun saveModel(v: String) = prefs.edit().putString("model", v).apply()
-    fun model() = prefs.getString("model", "google/gemini-2.5-flash") ?: "google/gemini-2.5-flash"
+    fun model() = prefs.getString("model", "openrouter/free") ?: "openrouter/free"
 }
