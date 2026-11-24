@@ -449,6 +449,22 @@ class GameAssistService : AccessibilityService() {
         }
     }
 
+    private fun bestAffordableVillageCost(coinsText: String?, costsText: String?): String {
+        val coins = coinsText?.filter { it.isDigit() }?.toLongOrNull()
+            ?: return "solde illisible"
+        val costs = costsText?.split(",")
+            ?.mapNotNull { it.trim().filter { ch -> ch.isDigit() }.toLongOrNull() }
+            ?.filter { it > 0L }
+            ?: return "prix illisibles"
+        if (costs.isEmpty()) return "prix non détectés"
+        val affordable = costs.filter { it <= coins }
+        return if (affordable.isEmpty()) {
+            "aucune pour l'instant"
+        } else {
+            "${affordable.minOrNull()} pièces (clic désactivé pour le test)"
+        }
+    }
+
     private fun finishAnalysis(message: String, buttonText: String) {
         analyzing = false
         statusView?.text = message
