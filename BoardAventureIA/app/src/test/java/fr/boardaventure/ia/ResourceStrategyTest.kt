@@ -34,4 +34,24 @@ class ResourceStrategyTest {
         val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+100", "x1", "unknown", "90000000")
         assertEquals(ResourceStrategy.SpinCommand.BLOCKED, plan.spinCommand)
     }
+    @Test fun choosesSingleSpinWhenBonusEnergyIsAvailable() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+3155", "x1", "ready", null)
+        assertEquals(ResourceStrategy.SpinCommand.TAP_SINGLE, plan.spinCommand)
+    }
+
+    @Test fun choosesSingleSpinNearTheNormalEnergyReserve() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "30/120", "+0", "x1", "ready", null)
+        assertEquals(ResourceStrategy.SpinCommand.TAP_SINGLE, plan.spinCommand)
+    }
+
+    @Test fun choosesAutoOnlyWithComfortableNormalEnergyAndNoBonus() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "60/120", "+0", "x2", "ready", null)
+        assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, plan.spinCommand)
+    }
+
+    @Test fun blocksWhenBonusEnergyCannotBeRead() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", null, "x1", "ready", null)
+        assertEquals(ResourceStrategy.SpinCommand.BLOCKED, plan.spinCommand)
+    }
+
 }
