@@ -443,9 +443,10 @@ class GameAssistService : AccessibilityService() {
                         "Bonus d'énergie : ${analysis.energyBonus ?: "illisible"}\n" +
                         "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
                         "Mode de lancer : ${spinStateLabel(analysis.spinState)}\n" +
-                        "Cartes abordables : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
+                        "Cartes village :\n" + formatVillageCards(analysis.coins, analysis.villageUpgradeCosts) +
+                        "Cartes abordables après réserve : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
                         "Carte conseillée : ${plan.suggestedCard?.let { "n°$it" } ?: "aucune"}\n" +
-                        "Règle lancers : ${plan.spinCommand}\n" +
+                        "Décision lancer : ${spinCommandLabel(plan.spinCommand)}\n" +
                         "Plan ressources : ${plan.explanation}\n" +
                         "Conseil IA : ${analysis.recommendation}\n" +
                         "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
@@ -462,6 +463,14 @@ class GameAssistService : AccessibilityService() {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
+    }
+
+    private fun spinCommandLabel(value: ResourceStrategy.SpinCommand): String = when (value) {
+        ResourceStrategy.SpinCommand.TAP_SINGLE -> "lancer simple (un clic bref)"
+        ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO -> "AUTO (maintien prolongé)"
+        ResourceStrategy.SpinCommand.TAP_STOP -> "arrêter AUTO (clic bref sur STOP)"
+        ResourceStrategy.SpinCommand.WAIT -> "attendre / surveiller les ressources"
+        ResourceStrategy.SpinCommand.BLOCKED -> "bloqué : données insuffisantes"
     }
 
     private fun spinStateLabel(value: String?): String = when (value?.lowercase()) {
