@@ -283,6 +283,8 @@ class GameAssistService : AccessibilityService() {
                         "Pièces : ${analysis.coins ?: "illisible"}\n" +
                         "Gemmes : ${analysis.gems ?: "illisible"}\n" +
                         "Étoiles : ${analysis.stars ?: "illisible"}\n" +
+                        "Énergie : ${analysis.energy ?: "illisible"}\n" +
+                        "Bonus d'énergie : ${analysis.energyBonus ?: "illisible"}\n" +
                         "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
                         "Conseil : ${analysis.recommendation}\n" +
                         "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
