@@ -59,6 +59,7 @@ object ResourceStrategy {
             }
             "ready" -> when {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
+                currentEnergy <= DEFAULT_ENERGY_RESERVE && bonus > 0L -> SpinCommand.TAP_SINGLE
                 currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
                 bonus > 0L -> SpinCommand.TAP_SINGLE
                 currentEnergy < DEFAULT_ENERGY_RESERVE + 20L -> SpinCommand.TAP_SINGLE
