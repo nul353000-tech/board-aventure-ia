@@ -73,6 +73,7 @@ class OpenRouterVision {
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
         val payload = JSONObject().put("model", effectiveModel).put("temperature", 0.1)
             .put("max_tokens", 1200)
+            .put("response_format", JSONObject().put("type", "json_object"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
