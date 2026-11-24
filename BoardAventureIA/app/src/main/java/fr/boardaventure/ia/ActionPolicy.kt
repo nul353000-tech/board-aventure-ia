@@ -76,7 +76,34 @@ object ActionPolicy {
         val t=villageCardTargets.firstOrNull{it.number==number}?:return null
         return (t.centerX*screenWidth).toInt() to (t.centerY*screenHeight).toInt()
     }
-    fun villageCardCalibrationStatus():String = "5 cartes, bouton spin et sélecteur multiplicateur repérés sur captures; simulation uniquement, validation tactile réelle requise."
+    fun validateVillageCard(
+        number: Int,
+        foregroundPackage: String?,
+        recognized: Boolean,
+        confidence: Double,
+        screenWidth: Int,
+        screenHeight: Int
+    ): Decision {
+        if (foregroundPackage != TARGET_PACKAGE) return Decision(false, "Jeu non au premier plan.")
+        if (!recognized || !confidence.isFinite() || confidence !in MIN_CONFIDENCE..1.0) {
+            return Decision(false, "Lecture du village insuffisante.")
+        }
+        if (screenWidth <= 1 || screenHeight <= 1 ||
+            kotlin.math.abs(screenWidth.toFloat() / screenHeight - 684f / 1536f) > 0.015f) {
+            return Decision(false, "Format écran non calibré.")
+        }
+        val target = villageCardTargets.firstOrNull { it.number == number }
+            ?: return Decision(false, "Numéro de carte invalide.")
+        if (!target.verifiedForDevice) return Decision(false, "Carte non validée pour un clic réel.")
+        val x = (target.centerX * screenWidth).toInt()
+        val y = (target.centerY * screenHeight).toInt()
+        if (x !in 0 until screenWidth || y !in 0 until screenHeight) {
+            return Decision(false, "Carte hors écran.")
+        }
+        return Decision(true, "Carte $number dans sa zone dédiée.")
+    }
+
+    fun villageCardCalibrationStatus():String = "5 cartes numérotées; coordonnées de simulation uniquement, clic réel verrouillé tant que chaque carte n'est pas validée."
     fun calibrationStatus(): String {
         val missing = ZoneId.values().filterNot { zone ->
             calibratedHitboxes[zone]?.let { it.isValid() && it.verifiedForDevice } == true
