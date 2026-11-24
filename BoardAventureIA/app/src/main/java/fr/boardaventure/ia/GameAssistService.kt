@@ -46,6 +46,14 @@ class GameAssistService : AccessibilityService() {
     private var lastForegroundPackage = "Application en attente"
     private var discoveryAttempts = 0
     private var autoAnalysisStartedForSession = false
+    private var autoWatchdogArmed = false
+    private var multiplierAdjustmentAttempts = 0
+
+    companion object {
+        const val AUTO_WATCHDOG_MS = 15_000L
+        private const val POST_GESTURE_VERIFY_MS = 1_800L
+        private const val MAX_MULTIPLIER_STEPS = 10
+    }
 
     // Safe UI-only automation: collapse the panel after 30 seconds without interaction.
     private val idleCollapseRunnable = Runnable {
@@ -112,6 +120,7 @@ class GameAssistService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        if (autoWatchdogArmed) stopAutoFromWatchdog("Service interrompu")
         if (!analyzing) statusView?.text = "Assistant interrompu"
     }
 
@@ -127,6 +136,7 @@ class GameAssistService : AccessibilityService() {
     override fun onDestroy() {
         mainHandler.removeCallbacks(discoveryRunnable)
         mainHandler.removeCallbacks(autoAnalysisRunnable)
+        mainHandler.removeCallbacks(autoWatchdogRunnable)
         mainHandler.removeCallbacks(idleCollapseRunnable)
         removeFloatingPanel()
         scope.cancel()
@@ -145,6 +155,51 @@ class GameAssistService : AccessibilityService() {
         autoAnalysisStartedForSession = true
         mainHandler.removeCallbacks(autoAnalysisRunnable)
         mainHandler.postDelayed(autoAnalysisRunnable, 1800L)
+    }
+
+
+    // Independent of OpenRouter/AI: a hard 15-second cap for each AUTO burst.
+    private val autoWatchdogRunnable = Runnable {
+        stopAutoFromWatchdog("Limite AUTO de 15 secondes atteinte")
+    }
+
+    private fun armAutoWatchdog() {
+        mainHandler.removeCallbacks(autoWatchdogRunnable)
+        autoWatchdogArmed = true
+        mainHandler.postDelayed(autoWatchdogRunnable, AUTO_WATCHDOG_MS)
+        statusView?.text = "AUTO surveillé · arrêt forcé dans 15 s"
+    }
+
+    private fun stopAutoFromWatchdog(reason: String) {
+        if (!autoWatchdogArmed) return
+        mainHandler.removeCallbacks(autoWatchdogRunnable)
+        if (!isGameVisible()) {
+            autoWatchdogArmed = false
+            statusView?.text = "$reason · jeu hors premier plan, aucune reprise automatique"
+            autoAnalysisStartedForSession = false
+            return
+        }
+        val metrics = resources.displayMetrics
+        val point = ActionPolicy.controlPreview("spin", metrics.widthPixels, metrics.heightPixels)
+        val decision = if (point == null) ActionPolicy.Decision(false, "Écran non calibré.") else
+            ActionPolicy.validate(ActionPolicy.TARGET_PACKAGE, true, 0.99, "spin", point.first, point.second, metrics.widthPixels, metrics.heightPixels)
+        if (point == null || !decision.allowed) {
+            autoWatchdogArmed = false
+            statusView?.text = "$reason · arrêt non envoyé : ${decision.explanation}"
+            return
+        }
+        GameGestureController.tap(this, GameGestureController.Target(point.first.toFloat(), point.second.toFloat()), decision.allowed) { ok ->
+            mainHandler.post {
+                autoWatchdogArmed = false
+                statusView?.text = if (ok) "$reason · STOP envoyé, vérification obligatoire…" else "$reason · échec du STOP, reprise interdite"
+                if (ok) {
+                    mainHandler.postDelayed({
+                        if (isGameVisible() && !analyzing) analyzeCurrentScreen()
+                        else statusView?.text = "STOP envoyé · jeu indisponible, aucune reprise"
+                    }, POST_GESTURE_VERIFY_MS)
+                }
+            }
+        }
     }
 
     private fun showFloatingPanel() {
@@ -431,7 +486,8 @@ class GameAssistService : AccessibilityService() {
                     spinState = analysis.spinState,
                     villageCostsText = analysis.villageUpgradeCosts
                 )
-                val villageStatus = if (recognized) dispatchPlannedVillageUpgrade(
+                val multiplierStatus = if (recognized) dispatchPlannedMultiplier(analysis.multiplier, analysis.confidence) else null
+                val villageStatus = if (recognized && multiplierStatus == null) dispatchPlannedVillageUpgrade(
                     screen = analysis.screen,
                     damagedBuildings = analysis.damagedBuildings,
                     costsText = analysis.villageUpgradeCosts,
@@ -439,7 +495,7 @@ class GameAssistService : AccessibilityService() {
                     confidence = analysis.confidence
                 ) else null
                 val gestureStatus = if (!recognized) "bloqué : jeu non reconnu"
-                    else villageStatus ?: dispatchPlannedSpin(plan.spinCommand, analysis.confidence)
+                    else multiplierStatus ?: villageStatus ?: dispatchPlannedSpin(plan.spinCommand, analysis.confidence)
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
@@ -479,6 +535,39 @@ class GameAssistService : AccessibilityService() {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
+    }
+
+
+    private fun dispatchPlannedMultiplier(multiplierText: String?, confidence: Double): String? {
+        val value = multiplierText?.trim()?.lowercase()?.removePrefix("x")?.toIntOrNull()
+            ?: return "multiplicateur inchangé : valeur illisible"
+        if (value == ResourceStrategy.DEFAULT_MULTIPLIER) {
+            multiplierAdjustmentAttempts = 0
+            return null
+        }
+        if (multiplierAdjustmentAttempts >= MAX_MULTIPLIER_STEPS) {
+            multiplierAdjustmentAttempts = 0
+            return "multiplicateur en pause : x1 non retrouvé après $MAX_MULTIPLIER_STEPS étapes"
+        }
+        if (!isGameVisible()) return "multiplicateur en pause : jeu non visible"
+        val metrics = resources.displayMetrics
+        val point = ActionPolicy.controlPreview("multiplier", metrics.widthPixels, metrics.heightPixels)
+            ?: return "multiplicateur en pause : écran non calibré"
+        val decision = ActionPolicy.validate(ActionPolicy.TARGET_PACKAGE, true, confidence, "set_multiplier", point.first, point.second, metrics.widthPixels, metrics.heightPixels)
+        if (!decision.allowed) return "multiplicateur en pause : ${decision.explanation}"
+        multiplierAdjustmentAttempts++
+        GameGestureController.tap(this, GameGestureController.Target(point.first.toFloat(), point.second.toFloat()), decision.allowed) { ok ->
+            mainHandler.post {
+                if (ok) {
+                    statusView?.text = "Multiplicateur modifié une étape · lecture de contrôle…"
+                    mainHandler.postDelayed({ if (isGameVisible() && !analyzing) analyzeCurrentScreen() }, POST_GESTURE_VERIFY_MS)
+                } else {
+                    multiplierAdjustmentAttempts = 0
+                    statusView?.text = "Multiplicateur : geste refusé, aucune autre étape"
+                }
+            }
+        }
+        return "une étape de multiplicateur envoyée; nouvelle lecture obligatoire avant toute autre étape"
     }
 
     private fun dispatchPlannedVillageUpgrade(
@@ -545,8 +634,16 @@ class GameAssistService : AccessibilityService() {
         when (command) {
             ResourceStrategy.SpinCommand.TAP_SINGLE, ResourceStrategy.SpinCommand.TAP_STOP ->
                 GameGestureController.tap(this, target, decision.allowed, completion)
-            ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO ->
-                return "AUTO bloqué : surveillance continue et arrêt de sécurité non armés"
+            ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO -> {
+                if (autoWatchdogArmed) return "AUTO déjà surveillé"
+                GameGestureController.hold(this, target, durationMs = 1_200L, authorized = decision.allowed) { ok ->
+                    mainHandler.post {
+                        if (ok && isGameVisible()) armAutoWatchdog()
+                        else statusView?.text = "AUTO non démarré ou interrompu · aucun redémarrage"
+                    }
+                }
+                return "maintien AUTO envoyé; watchdog indépendant de 15 secondes armé après confirmation"
+            }
             ResourceStrategy.SpinCommand.WAIT -> return "attente : ressources surveillées"
             ResourceStrategy.SpinCommand.BLOCKED -> return "bloqué : données insuffisantes"
         }
