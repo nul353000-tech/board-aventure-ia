@@ -20,7 +20,7 @@ data class GameAnalysis(
     val damagedBuildings: Boolean? = null, val freeRewardAvailable: Boolean? = null,
     val villageManiaActive: Boolean? = null, val villageMasterActive: Boolean? = null,
     val buildRushActive: Boolean? = null, val shieldCount: String? = null,
-    val activeEvents: String? = null, val progression: String? = null
+    val activeEvents: String? = null, val progression: String? = null, val provider: String = "openrouter"
 )
 
 class OpenRouterVision {
@@ -47,7 +47,7 @@ class OpenRouterVision {
                 else -> continue
             }
             try {
-                return analyzeSingle(provider, key, model, bitmap)
+                return analyzeSingle(provider, key, model, bitmap).copy(provider = provider)
             } catch (error: Exception) {
                 failures += "$provider: ${error.message ?: error.javaClass.simpleName}"
             }
