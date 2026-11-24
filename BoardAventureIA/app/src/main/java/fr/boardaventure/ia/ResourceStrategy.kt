@@ -69,7 +69,7 @@ object ResourceStrategy {
             append(totalEnergy?.toString() ?: "inconnue")
             append("/ seuil ")
             append(DEFAULT_ENERGY_RESERVE)
-            append(". Multiplicateur conseillé: x")
+            append(". Multiplicateur détecté: x")
             append(multiplier ?: DEFAULT_MULTIPLIER)
             append(". Réserve pièces: ")
             append(reserve?.toString() ?: "inconnue")
