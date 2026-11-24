@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 data class GameAnalysis(
     val recognized: Boolean, val confidence: Double, 
     val coins: String?, val gems: String?, val stars: String?, val energy: String?,
-    val energyBonus: String?, val multiplier: String?, val villageUpgradeCosts: String?, val screen: String, val recommendation: String, val action: String,
+    val energyBonus: String?, val multiplier: String?, val spinState: String?, val villageUpgradeCosts: String?, val screen: String, val recommendation: String, val action: String,
     val x: Int?, val y: Int?, val reason: String
 )
 
@@ -50,7 +50,7 @@ class OpenRouterVision {
         val systemPrompt = "Tu es l'agent de vision du jeu Board Aventure (package com.moonactive.cmboard). " +
             "Analyse uniquement ce qui est visible, sans inventer. Réponds en JSON strict avec recognized(boolean), " +
             "confidence(number 0..1), screen(string), coins(string|null), " +
-            "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), village_upgrade_costs(string|null), recommendation(string), " +
+            "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), spin_state(ready|running|unknown), village_upgrade_costs(string|null), recommendation(string), " +
             "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
             "Tours, bonus, pièces et gemmes peuvent monter ou baisser ; étoiles seulement augmenter. " +
@@ -67,12 +67,12 @@ class OpenRouterVision {
             "de progression. Les étoiles sont un compteur monotone (elles ne font qu'augmenter). " +
             "Un panneau flottant peut cacher une partie de l'écran: ne devine jamais les chiffres réellement cachés, " +
             "mais continue de lire les autres compteurs visibles. " +
-            "Repère les cartes du village par leur présentation visuelle: cartes alignées, étoiles en haut, illustration au centre et bandeau vert en bas avec une icône de pièce et un prix. Le mot « améliorer » peut être absent: ne l'exige jamais. Lis chaque prix réellement affiché dans ces bandeaux, quel que soit son montant et quel que soit le nombre de cartes visibles. village_upgrade_costs doit être une liste de montants en pièces entières séparés par des virgules, dans l'ordre gauche à droite; convertis les abréviations (par exemple 90M en 90000000). Ne réutilise jamais les anciens prix si ceux de l'écran actuel sont différents; si un prix est illisible, indique -1 à sa position; si aucune carte n'est visible, null. Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
+            "Repère les cartes du village par leur présentation visuelle: cartes alignées, étoiles en haut, illustration au centre et bandeau vert en bas avec une icône de pièce et un prix. Le mot « améliorer » peut être absent: ne l'exige jamais. Lis chaque prix réellement affiché dans ces bandeaux, quel que soit son montant et quel que soit le nombre de cartes visibles. village_upgrade_costs doit être une liste de montants en pièces entières séparés par des virgules, dans l'ordre gauche à droite; convertis les abréviations (par exemple 90M en 90000000). Ne réutilise jamais les anciens prix si ceux de l'écran actuel sont différents; si un prix est illisible, indique -1 à sa position; si aucune carte n'est visible, null. Ne propose jamais d'achat en argent réel. Détecte le bouton central: si le bouton rouge montre le dé et invite à lancer, spin_state=ready; si le bouton rouge affiche STOP, spin_state=running; sinon unknown. Lis séparément le multiplicateur jaune près du bouton. Ne confonds jamais STOP avec LANCER. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
         val userPrompt = "Lis tous les compteurs visibles: étoiles, énergie actuelle/maximale, " +
             "bonus d'énergie, pièces, gemmes, multiplicateur et les prix des cartes du village. Les cartes du village sont reconnaissables à leur bande verte avec icône de pièce et prix; le mot « améliorer » n'est pas nécessaire. Les prix peuvent changer et le nombre de cartes aussi: lis les valeurs de la capture actuelle, de gauche à droite, converties en pièces entières (90M devient 90000000). Mets -1 pour un prix de carte illisible, null s'il n'y a aucune carte visible. " +
             "" +
             "" +
-            "Réponds avec un JSON compact, sans explication, exactement selon le schéma."
+            "Détecte aussi si le bouton central est prêt à lancer ou affiche STOP en cours. Réponds avec un JSON compact, sans explication, exactement selon le schéma."
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
@@ -172,7 +172,7 @@ class OpenRouterVision {
             }
             GameAnalysis(
                 recognized, confidence, 
-                textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"), textField("village_upgrade_costs"),
+                textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"), textField("spin_state"), textField("village_upgrade_costs"),
                 textField("screen") ?: "inconnu", textField("recommendation") ?: "", action,
                 intField("x"), intField("y"), textField("reason") ?: ""
             )
