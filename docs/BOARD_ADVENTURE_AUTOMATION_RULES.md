@@ -143,3 +143,58 @@ Politique :
 - Cartes à gratter : https://support.boardadventuregame.com/hc/fr/articles/33157554756754-Qu-est-ce-que-la-carte-%C3%A0-gratter
 - Quête du désert : https://support.boardadventuregame.com/hc/fr/articles/38540956030866-Qu-est-ce-que-la-Qu%C3%AAte-du-d%C3%A9sert-de-Coin-Master-Board-Adventure
 - Pop 'n Drop : https://support.boardadventuregame.com/hc/fr/articles/39727777941906-En-quoi-consiste-l-%C3%A9v%C3%A9nement-Coin-Master-Board-Adventure-Pop-n-Drop
+
+
+## 9. Habitudes observées chez d'autres joueurs (retours communautaires)
+
+Cette section synthétise des témoignages publics. Ce ne sont pas des règles garanties du jeu : les niveaux, événements, stocks et versions peuvent différer. Les anecdotes ne doivent jamais devenir des automatismes risqués sans validation sur le compte.
+
+### Routine de connexion
+- Les guides officiels recommandent de vérifier les événements et missions avant de lancer, puis de récupérer les cadeaux quotidiens, la roue bonus, le calendrier, les récompenses et les cadeaux d'amis.
+- Les joueurs qui optimisent leur progression regroupent les actions qui font avancer plusieurs objectifs à la fois : par exemple construire pendant un événement de construction et une mission qui demande de construire.
+- Automatisation proposée : au début d'une session, analyser les événements, missions, récompenses gratuites, cadeaux, minuteurs et objectifs. Produire une liste de priorités avant toute dépense.
+
+### Multiplicateur : pratique rapportée, pas recette universelle
+- Un témoignage Board Adventure rapporte avoir utilisé x3 au début, puis x5, x15, x50 et x400 après avoir accumulé beaucoup d'énergie ; le joueur indique environ 100 000 énergies à x400 et déconseille d'aller plus haut dans son cas.
+- D'autres témoignages conseillent de monter le multiplicateur pour atteindre un jalon d'événement, mais certains signalent avoir perdu une grande quantité d'énergie en poursuivant un objectif trop ambitieux.
+- Automatisation proposée : choisir le multiplicateur selon l'objectif et le coût par lancer, pas selon le seul solde. Rester bas pour préserver une réserve ; n'augmenter que si le jalon est atteignable avec le budget d'énergie autorisé. Revenir à x1 après l'objectif ou si le rendement observé se dégrade.
+- Ne pas coder x3/x5/x15/x50/x400 comme une séquence fixe : ce sont des expériences individuelles, pas une stratégie universelle ni une preuve de meilleur rendement.
+
+### Village : épargner puis terminer en une session
+- La pratique communautaire rejoint le conseil officiel : accumuler assez de pièces pour achever le village, puis construire rapidement afin de réduire le temps où les bâtiments restent exposés.
+- Les joueurs expérimentés cherchent à combiner la réduction Village Mania avec les récompenses de fin Village Master et les bonus Build Rush, lorsque les événements coïncident.
+- Automatisation proposée : calculer le coût total restant des bâtiments visibles, repérer les réductions et récompenses actives, puis attendre d'avoir le budget complet et une réserve avant de démarrer. Si le village est déjà commencé, prioriser la protection et évaluer le risque de laisser des bâtiments endommagés.
+
+### Réserve d'objectifs et de récompenses
+- Un joueur conseille de garder certains jetons ou récompenses récupérables jusqu'au démarrage d'un événement, afin qu'ils contribuent à sa progression. C'est un témoignage isolé : les règles de chaque événement doivent être vérifiées avant d'attendre, car certaines récompenses expirent.
+- Automatisation proposée : repérer les récompenses non réclamées et leur date limite. Ne différer une collecte que si l'interface ou les règles officielles confirment qu'elle restera disponible et que la collecte après le début de l'événement sera comptabilisée.
+
+### Boucliers et départ de session
+- Les guides officiels recommandent de remplir les boucliers et de garder l'animal défensif éveillé avant de quitter le jeu, surtout si le village n'est pas terminé.
+- Automatisation proposée : routine de fin de session : vérifier boucliers, état de l'animal défensif, bâtiments endommagés et village incomplet ; ne pas dépenser de ressources rares sans estimation du bénéfice.
+
+### Qualité des données communautaires
+- Les tableaux de prix de village publiés par des joueurs sont explicitement parfois incomplets ou approximatifs. Ils peuvent aider à repérer des ordres de grandeur, mais ne doivent jamais remplacer les prix lus sur la capture actuelle.
+- Un post rapporte une observation sur 500 lancers et une distribution de résultats de dés qui lui paraît non uniforme. Un échantillon individuel ne permet pas d'établir les probabilités du jeu : aucune stratégie de lancer ne doit être construite sur cette seule observation.
+- Les conseils sur les multiplicateurs sont des retours personnels, souvent liés à des stocks d'énergie très élevés. Ils ne démontrent pas un rendement positif reproductible.
+
+## 10. Ordre de priorité recommandé pour l'agent
+
+1. Sécuriser la session : reconnaître le jeu, lire l'énergie, pièces, gemmes, étoiles, boucliers, écran, village et minuteurs.
+2. Collecter les récompenses gratuites clairement disponibles et non expirées ; vérifier chaque crédit après collecte.
+3. Lire événements et missions ; identifier les actions qui font progresser plusieurs objectifs en même temps.
+4. Déterminer le budget d'énergie et le multiplicateur compatibles avec la réserve et le prochain jalon réaliste.
+5. Accumuler les pièces nécessaires à une complétion du village ; synchroniser avec les événements de construction.
+6. Réparer les bâtiments endommagés avant amélioration ; ne pas confondre réparation et amélioration.
+7. Avant de quitter : vérifier boucliers, animal défensif, bâtiments et récompenses à échéance.
+8. Après chaque action automatisée : nouvelle capture, comparaison des compteurs et arrêt si le résultat n'est pas celui attendu.
+
+## Sources communautaires et guides de stratégie
+
+- Guide officiel des habitudes générales : https://support.coinmastergame.com/hc/en-us/articles/40341161577746-What-are-the-best-general-strategy-tips-for-Coin-Master
+- Guide officiel pour construire efficacement : https://support.coinmastergame.com/hc/en-us/articles/29805992231058-How-can-I-strategically-best-build-my-Village
+- Guide officiel des erreurs stratégiques : https://support.coinmastergame.com/hc/en-us/articles/37345617872658-How-can-I-avoid-common-strategic-pitfalls-in-Coin-Master
+- Témoignage Board Adventure sur la progression x3 → x5 → x15 → x50 → x400 : https://www.reddit.com/r/SwagBucks/comments/1skiqf5/coin_master_board_adventure_easy_200/
+- Discussion sur la conservation de jetons/récompenses avant un événement : https://www.reddit.com/r/CoinMasterGame/comments/1se4ecx/coin_master_board_adventure_question/
+- Discussion communautaire sur les prix de village (données déclarées non garanties) : https://www.reddit.com/r/CoinMasterBoard/comments/1sx5rsl/board_adventure_village_prices_up_to_village_50/
+- Observation individuelle de 500 lancers (échantillon non représentatif) : https://www.reddit.com/r/CoinMasterGame/comments/1r951gz/psa_board_adventure_dice_are_rigged/
