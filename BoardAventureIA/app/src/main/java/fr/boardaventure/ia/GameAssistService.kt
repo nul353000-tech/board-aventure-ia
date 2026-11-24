@@ -431,7 +431,15 @@ class GameAssistService : AccessibilityService() {
                     spinState = analysis.spinState,
                     villageCostsText = analysis.villageUpgradeCosts
                 )
-                val gestureStatus = if (recognized) dispatchPlannedSpin(plan.spinCommand, analysis.confidence) else "bloqué : jeu non reconnu"
+                val villageStatus = if (recognized) dispatchPlannedVillageUpgrade(
+                    screen = analysis.screen,
+                    damagedBuildings = analysis.damagedBuildings,
+                    costsText = analysis.villageUpgradeCosts,
+                    suggestedCard = plan.suggestedCard,
+                    confidence = analysis.confidence
+                ) else null
+                val gestureStatus = if (!recognized) "bloqué : jeu non reconnu"
+                    else villageStatus ?: dispatchPlannedSpin(plan.spinCommand, analysis.confidence)
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
@@ -471,6 +479,46 @@ class GameAssistService : AccessibilityService() {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
+    }
+
+    private fun dispatchPlannedVillageUpgrade(
+        screen: String?,
+        damagedBuildings: Boolean?,
+        costsText: String?,
+        suggestedCard: Int?,
+        confidence: Double
+    ): String? {
+        if (screen?.contains("village", ignoreCase = true) != true) return null
+        if (damagedBuildings != false) return "village en pause : état des bâtiments endommagés inconnu ou réparation nécessaire"
+        val costs = costsText?.split(",") ?: return "village en pause : les cinq prix ne sont pas lisibles"
+        if (costs.size != 5 || costs.any { it.trim().isEmpty() || it.trim() == "-1" }) {
+            return "village en pause : il faut lire les cinq prix actuels"
+        }
+        val card = suggestedCard ?: return "village en pause : aucune carte abordable après réserve de pièces"
+        if (card !in 1..5 || !isGameVisible()) return "village en pause : carte ou application non valide"
+        val metrics = resources.displayMetrics
+        val decision = ActionPolicy.validateVillageCard(
+            number = card,
+            foregroundPackage = ActionPolicy.TARGET_PACKAGE,
+            recognized = true,
+            confidence = confidence,
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels
+        )
+        if (!decision.allowed) return "village en pause : ${decision.explanation}"
+        val point = ActionPolicy.villageCardPreview(card, metrics.widthPixels, metrics.heightPixels)
+            ?: return "village en pause : coordonnées indisponibles"
+        GameGestureController.tap(
+            this,
+            GameGestureController.Target(point.first.toFloat(), point.second.toFloat()),
+            authorized = decision.allowed
+        ) { ok ->
+            mainHandler.post {
+                statusView?.text = if (ok) "Carte village $card sélectionnée — nouvelle analyse nécessaire"
+                else "Geste village refusé ou annulé"
+            }
+        }
+        return "carte village $card sélectionnée; une seule action, nouvelle lecture requise avant la suivante"
     }
 
     private fun dispatchPlannedSpin(command: ResourceStrategy.SpinCommand, confidence: Double): String {
