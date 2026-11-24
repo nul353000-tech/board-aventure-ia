@@ -486,7 +486,7 @@ class GameAssistService : AccessibilityService() {
                     spinState = analysis.spinState,
                     villageCostsText = analysis.villageUpgradeCosts
                 )
-                val goalReached = isProgressGoalReached(analysis.progression)
+                val goalReached = ResourceStrategy.isProgressGoalReached(analysis.progression)
                 val multiplierStatus = if (recognized && !goalReached) dispatchPlannedMultiplier(analysis.multiplier, analysis.confidence) else null
                 val villageStatus = if (recognized && !goalReached && multiplierStatus == null) dispatchPlannedVillageUpgrade(
                     screen = analysis.screen,
@@ -542,12 +542,7 @@ class GameAssistService : AccessibilityService() {
     }
 
 
-    private fun isProgressGoalReached(value: String?): Boolean {
-        val match = Regex("(\\\\d{1,4})\\\\s*/\\\\s*(\\\\d{1,4})").find(value.orEmpty()) ?: return false
-        val current = match.groupValues[1].toIntOrNull() ?: return false
-        val target = match.groupValues[2].toIntOrNull() ?: return false
-        return current >= 725 && target == 725
-    }
+
 
     private fun dispatchPlannedMultiplier(multiplierText: String?, confidence: Double): String? {
         // The game exposes a cycling multiplier control, not a direct value selector.
