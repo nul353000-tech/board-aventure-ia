@@ -68,7 +68,7 @@ object ResourceStrategy {
             "auto_active" -> SpinCommand.TAP_STOP
             "ready" -> when {
                 currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
-                currentEnergy <= energyReserve.coerceIn(0L, 100L) && bonus > 0L -> SpinCommand.TAP_SINGLE
+                currentEnergy <= energyReserve.coerceIn(0L, 100L) && bonus > bonusReserve.coerceIn(0L, 50L) -> SpinCommand.TAP_SINGLE
                 currentEnergy <= energyReserve.coerceIn(0L, 100L) -> SpinCommand.WAIT
                 bonus > bonusReserve.coerceIn(0L, 50L) -> SpinCommand.TAP_SINGLE
                 currentEnergy < energyReserve.coerceIn(0L, 100L) + 20L -> SpinCommand.TAP_SINGLE
