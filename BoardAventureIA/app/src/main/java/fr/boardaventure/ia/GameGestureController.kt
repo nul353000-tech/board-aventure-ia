@@ -3,7 +3,7 @@ package fr.boardaventure.ia
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Path
 import android.os.Build
-import android.view.GestureDescription
+import android.accessibilityservice.GestureDescription
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
