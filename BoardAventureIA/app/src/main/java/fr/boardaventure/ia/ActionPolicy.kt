@@ -22,10 +22,23 @@ object ActionPolicy {
                 left < right && top < bottom
     }
 
-    // Intentionally empty until each target is measured and confirmed on the
-    // user's actual device. Screenshot-derived guesses are never click authority.
+    // Screenshot-derived village price-strip targets (684x1536), preview only.
+    data class CardTarget(val number:Int,val centerX:Float,val centerY:Float,val left:Float,val top:Float,val right:Float,val bottom:Float,val verifiedForDevice:Boolean=false)
+    private val villageCardTargets = listOf(
+        CardTarget(1,69f/684f,1500f/1536f,8f/684f,1478f/1536f,130f/684f,1525f/1536f),
+        CardTarget(2,205f/684f,1500f/1536f,144f/684f,1478f/1536f,267f/684f,1525f/1536f),
+        CardTarget(3,342f/684f,1500f/1536f,281f/684f,1478f/1536f,404f/684f,1525f/1536f),
+        CardTarget(4,478f/684f,1500f/1536f,417f/684f,1478f/1536f,540f/684f,1525f/1536f),
+        CardTarget(5,615f/684f,1500f/1536f,554f/684f,1478f/1536f,677f/684f,1525f/1536f)
+    )
     private val calibratedHitboxes: Map<ZoneId, Hitbox> = emptyMap()
-
+    fun villageCardPreview(number:Int,screenWidth:Int,screenHeight:Int):Pair<Int,Int>? {
+        if(screenWidth<=1||screenHeight<=1) return null
+        if(kotlin.math.abs(screenWidth.toFloat()/screenHeight-684f/1536f)>0.015f) return null
+        val t=villageCardTargets.firstOrNull{it.number==number}?:return null
+        return (t.centerX*screenWidth).toInt() to (t.centerY*screenHeight).toInt()
+    }
+    fun villageCardCalibrationStatus():String = "5 cartes repérées sur la capture; simulation uniquement, validation tactile réelle requise."
     fun calibrationStatus(): String {
         val missing = ZoneId.values().filterNot { zone ->
             calibratedHitboxes[zone]?.let { it.isValid() && it.verifiedForDevice } == true
