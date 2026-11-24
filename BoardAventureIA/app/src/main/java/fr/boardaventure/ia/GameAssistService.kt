@@ -37,6 +37,10 @@ class GameAssistService : AccessibilityService() {
     private var dragStartRawY = 0f
     private var dragStartX = 0
     private var dragStartY = 0
+    private var minimized = false
+    private var dragHandleView: TextView? = null
+    private var minimizeButton: TextView? = null
+    private var compactBubble: TextView? = null
     private var analyzing = false
     private var lastForegroundPackage = "Application en attente"
     private var discoveryAttempts = 0
@@ -147,6 +151,27 @@ class GameAssistService : AccessibilityService() {
             setPadding(12, 8, 12, 8)
             isFocusable = false
         }
+        val minimize = TextView(this).apply {
+            text = "—  Réduire en bulle"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(8, 7, 8, 7)
+            setOnClickListener { minimizeFloatingPanel() }
+        }
+        val bubble = TextView(this).apply {
+            text = "IA"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(30, 105, 190))
+                setStroke(2, Color.WHITE)
+            }
+            visibility = View.GONE
+            setOnClickListener { restoreFloatingPanel() }
+        }
         val button = TextView(this).apply {
             text = "BOARD IA · ANALYSER"
             textSize = 14f
@@ -173,9 +198,11 @@ class GameAssistService : AccessibilityService() {
             visibility = View.GONE
         }
         root.addView(dragHandle)
+        root.addView(minimize)
         root.addView(button)
         root.addView(status)
         root.addView(result)
+        root.addView(bubble, LinearLayout.LayoutParams(54, 54))
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -210,6 +237,9 @@ class GameAssistService : AccessibilityService() {
         try {
             windowManager?.addView(root, params)
             panel = root
+            dragHandleView = dragHandle
+            minimizeButton = minimize
+            compactBubble = bubble
             analyzeButton = button
             statusView = status
             resultView = result
@@ -218,9 +248,52 @@ class GameAssistService : AccessibilityService() {
         }
     }
 
+    private fun minimizeFloatingPanel() {
+        if (minimized || analyzing) return
+        minimized = true
+        dragHandleView?.visibility = View.GONE
+        minimizeButton?.visibility = View.GONE
+        analyzeButton?.visibility = View.GONE
+        statusView?.visibility = View.GONE
+        resultView?.visibility = View.GONE
+        panel?.setPadding(0, 0, 0, 0)
+        panel?.background = null
+        compactBubble?.visibility = View.VISIBLE
+        panelLayoutParams?.let { params ->
+            params.gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            params.x = 0
+            runCatching { panel?.let { windowManager?.updateViewLayout(it, params) } }
+        }
+    }
+
+    private fun restoreFloatingPanel() {
+        if (!minimized) return
+        minimized = false
+        panel?.setPadding(12, 10, 12, 10)
+        panel?.background = GradientDrawable().apply {
+            setColor(Color.rgb(28, 35, 48))
+            cornerRadius = 22f
+            setStroke(2, Color.rgb(65, 130, 210))
+        }
+        compactBubble?.visibility = View.GONE
+        dragHandleView?.visibility = View.VISIBLE
+        minimizeButton?.visibility = View.VISIBLE
+        analyzeButton?.visibility = View.VISIBLE
+        statusView?.visibility = View.VISIBLE
+        panelLayoutParams?.let { params ->
+            params.gravity = Gravity.TOP or Gravity.END
+            params.y = 180
+            runCatching { panel?.let { windowManager?.updateViewLayout(it, params) } }
+        }
+    }
+
     private fun removeFloatingPanel() {
         panel?.let { view -> runCatching { windowManager?.removeView(view) } }
         panel = null
+        minimized = false
+        dragHandleView = null
+        minimizeButton = null
+        compactBubble = null
         analyzeButton = null
         statusView = null
         resultView = null
