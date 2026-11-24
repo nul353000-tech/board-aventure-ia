@@ -432,6 +432,7 @@ class GameAssistService : AccessibilityService() {
                         "Énergie : ${analysis.energy ?: "illisible"}\n" +
                         "Bonus d'énergie : ${analysis.energyBonus ?: "illisible"}\n" +
                         "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
+                        "État des lancers : ${spinStateLabel(analysis.spinState)}\n" +
                         "Conseil : ${analysis.recommendation}\n" +
                         "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
                 }
@@ -447,6 +448,12 @@ class GameAssistService : AccessibilityService() {
                 if (!bitmap.isRecycled) bitmap.recycle()
             }
         }
+    }
+
+    private fun spinStateLabel(value: String?): String = when (value?.lowercase()) {
+        "ready" -> "prêt à lancer (aucun lancement automatique)"
+        "running" -> "lancement en cours — ne pas relancer"
+        else -> "état inconnu — action bloquée"
     }
 
     private fun formatVillageCards(coinsText: String?, costsText: String?): String {
