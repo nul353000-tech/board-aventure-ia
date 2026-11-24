@@ -48,8 +48,14 @@ class OpenRouterVision {
             "environ x=36-60% et y=7-12%; énergie en bas au centre, x=32-68% et y=92-97%; bonus d'énergie sous cette barre, " +
             "x=38-63% et y=97-100%; multiplicateur de lancer en bas à droite près du gros bouton rouge, x=68-85% et y=84-90%; " +
             "compteur bonus visible près de la progression supérieure, x=65-78% et y=22-28%. " +
-            "Les étoiles et les tours principaux peuvent être hors champ ou masqués: retourne null si leur nombre n'est pas lisible. " +
-            "Un panneau flottant peut cacher la barre supérieure: ne devine jamais les chiffres cachés. " +
+            "Repère et lis systématiquement les étoiles, les tours principaux disponibles et les tours supplémentaires/bonus " +
+            "en utilisant aussi les captures de référence déjà fournies par l'utilisateur: ne les considère pas comme absents " +
+            "simplement parce qu'ils ne sont pas dans les zones pièces/gemmes/énergie. Distingue clairement tours principaux, " +
+            "tours supplémentaires/bonus et énergie; ne les additionne jamais et ne confonds pas l'énergie avec les tours. " +
+            "Pour chaque compteur, cherche son icône et son nombre sur l'ensemble de l'écran, y compris les côtés et les éléments " +
+            "de progression. Les étoiles sont un compteur monotone (elles ne font qu'augmenter). " +
+            "Un panneau flottant peut cacher une partie de l'écran: ne devine jamais les chiffres réellement cachés, " +
+            "mais continue de lire les autres compteurs visibles. " +
             "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
         val userPrompt = "Règles: réserve de 5 tours, limite de lancers=all, arrêt=both. " +
             "Gemmes gagnées utilisables uniquement si cela améliore clairement la progression. " +
