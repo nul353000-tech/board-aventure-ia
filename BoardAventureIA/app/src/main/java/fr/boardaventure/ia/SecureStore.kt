@@ -40,6 +40,14 @@ class SecureStore(context: Context) {
     fun providerKey(provider: String): String? = readSecret(provider.lowercase() + "_key")
     fun saveProvider(value: String) { prefs.edit().putString("provider", value).apply() }
     fun provider(): String = prefs.getString("provider", "openrouter") ?: "openrouter"
+    fun energyReserve(): Long = prefs.getLong("energy_reserve", 20L)
+    fun bonusReserve(): Long = prefs.getLong("bonus_reserve", 5L)
+    fun coinReservePercent(): Long = prefs.getLong("coin_reserve_percent", 10L)
+    fun saveRiskSettings(energy: Long, bonus: Long, coins: Long) {
+        prefs.edit().putLong("energy_reserve", energy.coerceIn(0L, 100L))
+            .putLong("bonus_reserve", bonus.coerceIn(0L, 50L))
+            .putLong("coin_reserve_percent", coins.coerceIn(0L, 30L)).apply()
+    }
     fun saveModel(v: String) = prefs.edit().putString("model", v).apply()
     fun model() = prefs.getString("model", "nvidia/nemotron-3.5-super-vl:free") ?: "nvidia/nemotron-3.5-super-vl:free"
 }
