@@ -486,8 +486,9 @@ class GameAssistService : AccessibilityService() {
                     spinState = analysis.spinState,
                     villageCostsText = analysis.villageUpgradeCosts
                 )
-                val multiplierStatus = if (recognized) dispatchPlannedMultiplier(analysis.multiplier, analysis.confidence) else null
-                val villageStatus = if (recognized && multiplierStatus == null) dispatchPlannedVillageUpgrade(
+                val goalReached = isProgressGoalReached(analysis.progression)
+                val multiplierStatus = if (recognized && !goalReached) dispatchPlannedMultiplier(analysis.multiplier, analysis.confidence) else null
+                val villageStatus = if (recognized && !goalReached && multiplierStatus == null) dispatchPlannedVillageUpgrade(
                     screen = analysis.screen,
                     damagedBuildings = analysis.damagedBuildings,
                     costsText = analysis.villageUpgradeCosts,
@@ -496,7 +497,9 @@ class GameAssistService : AccessibilityService() {
                     confidence = analysis.confidence
                 ) else null
                 val gestureStatus = if (!recognized) "bloqué : jeu non reconnu"
-                    else multiplierStatus ?: villageStatus ?: dispatchPlannedSpin(plan.spinCommand, analysis.confidence)
+                    else if (goalReached && plan.spinCommand != ResourceStrategy.SpinCommand.TAP_STOP) "objectif 725/725 atteint : arrêt des actions"
+                    else multiplierStatus ?: villageStatus ?: if (plan.spinCommand != ResourceStrategy.SpinCommand.TAP_STOP && analysis.progression.isNullOrBlank()) "lancer bloqué : progression non lue"
+                    else dispatchPlannedSpin(plan.spinCommand, analysis.confidence)
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
@@ -538,6 +541,13 @@ class GameAssistService : AccessibilityService() {
         }
     }
 
+
+    private fun isProgressGoalReached(value: String?): Boolean {
+        val match = Regex("(\\\\d{1,4})\\\\s*/\\\\s*(\\\\d{1,4})").find(value.orEmpty()) ?: return false
+        val current = match.groupValues[1].toIntOrNull() ?: return false
+        val target = match.groupValues[2].toIntOrNull() ?: return false
+        return current >= 725 && target == 725
+    }
 
     private fun dispatchPlannedMultiplier(multiplierText: String?, confidence: Double): String? {
         // The game exposes a cycling multiplier control, not a direct value selector.
