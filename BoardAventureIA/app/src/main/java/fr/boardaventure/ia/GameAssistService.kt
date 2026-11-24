@@ -128,6 +128,7 @@ class GameAssistService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        if (autoWatchdogArmed) stopAutoFromWatchdog("Service fermé")
         mainHandler.removeCallbacks(discoveryRunnable)
         mainHandler.removeCallbacks(autoAnalysisRunnable)
         mainHandler.removeCallbacks(autoWatchdogRunnable)
