@@ -9,7 +9,7 @@ object ResourceStrategy {
     const val DEFAULT_COIN_RESERVE_PERCENT = 10L
     const val DEFAULT_MULTIPLIER = 1
 
-    enum class SpinCommand { HOLD_TO_START_AUTO, TAP_STOP, WAIT, BLOCKED }
+    enum class SpinCommand { TAP_SINGLE, HOLD_TO_START_AUTO, TAP_STOP, WAIT, BLOCKED }
 
     data class Plan(
         val spinCommand: SpinCommand,
@@ -36,7 +36,8 @@ object ResourceStrategy {
 
         val energy = parseEnergy(energyText)
         val bonus = parseLong(energyBonusText)
-        val totalEnergy = if (energy != null && bonus != null) energy.first + bonus else null
+        val currentEnergy = energy?.first
+        val totalEnergy = if (currentEnergy != null && bonus != null) currentEnergy + bonus else null
         val multiplier = parseMultiplier(multiplierText)
         val coins = parseLong(coinsText)
         val reserve = coins?.let { it * DEFAULT_COIN_RESERVE_PERCENT / 100L }
@@ -52,22 +53,28 @@ object ResourceStrategy {
 
         val command = when (spinState?.lowercase()) {
             "auto_active" -> when {
-                totalEnergy == null -> SpinCommand.BLOCKED
-                totalEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.TAP_STOP
+                currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
+                currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.TAP_STOP
                 else -> SpinCommand.WAIT
             }
             "ready" -> when {
-                totalEnergy == null -> SpinCommand.BLOCKED
-                totalEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
+                currentEnergy == null || bonus == null -> SpinCommand.BLOCKED
+                currentEnergy <= DEFAULT_ENERGY_RESERVE -> SpinCommand.WAIT
+                bonus > 0L -> SpinCommand.TAP_SINGLE
+                currentEnergy < DEFAULT_ENERGY_RESERVE + 20L -> SpinCommand.TAP_SINGLE
                 else -> SpinCommand.HOLD_TO_START_AUTO
             }
             else -> SpinCommand.BLOCKED
         }
 
         val explanation = buildString {
-            append("Réserve énergie: ")
-            append(totalEnergy?.toString() ?: "inconnue")
-            append("/ seuil ")
+            append("Énergie normale: ")
+            append(currentEnergy?.toString() ?: "inconnue")
+            append(" · énergie supplémentaire: ")
+            append(bonus?.toString() ?: "inconnue")
+            append(" · total disponible: ")
+            append(totalEnergy?.toString() ?: "inconnu")
+            append(" · réserve normale: ")
             append(DEFAULT_ENERGY_RESERVE)
             append(". Multiplicateur détecté: x")
             append(multiplier ?: DEFAULT_MULTIPLIER)
