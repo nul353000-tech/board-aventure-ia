@@ -46,13 +46,19 @@ class ActionPolicyTest {
         assertFalse(validate(height = 0).allowed)
     }
 
-    @Test fun everyZoneRemainsLockedUntilDeviceCalibration() {
-        assertFalse(validate(action = "spin").allowed)
+    @Test fun confirmedScreenshotZonesAreAuthorizedButUnmappedRewardIsBlocked() {
+        val spin = ActionPolicy.controlPreview("spin", 1080, 2400)!!
+        assertTrue(validate(x = spin.first, y = spin.second).allowed)
+        val village = ActionPolicy.villageCardPreview(3, 1080, 2400)!!
+        assertTrue(validate(action = "upgrade_village", x = village.first, y = village.second).allowed)
         assertFalse(validate(action = "collect_free_reward").allowed)
-        assertFalse(validate(action = "upgrade_village").allowed)
-        assertTrue(ActionPolicy.calibrationStatus().contains("SPIN"))
         assertTrue(ActionPolicy.calibrationStatus().contains("FREE_REWARD"))
-        assertTrue(ActionPolicy.calibrationStatus().contains("VILLAGE_UPGRADE"))
+    }
+
+    @Test fun multiplierZoneIsValidatedAndWrongAspectRatioIsRejected() {
+        val point = ActionPolicy.controlPreview("multiplier", 684, 1536)!!
+        assertTrue(validate(action = "set_multiplier", x = point.first, y = point.second, width = 684, height = 1536).allowed)
+        assertFalse(validate(width = 1080, height = 1920).allowed)
     }
 
     @Test fun villageCardTargetsArePreviewOnlyAndNumberedLeftToRight() {
