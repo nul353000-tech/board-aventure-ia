@@ -449,20 +449,32 @@ class GameAssistService : AccessibilityService() {
         }
     }
 
-    private fun bestAffordableVillageCost(coinsText: String?, costsText: String?): String {
+    private fun formatVillageCards(coinsText: String?, costsText: String?): String {
+        if (costsText.isNullOrBlank()) return "Cartes village : non détectées\\n"
         val coins = coinsText?.filter { it.isDigit() }?.toLongOrNull()
-            ?: return "solde illisible"
-        val costs = costsText?.split(",")
-            ?.mapNotNull { it.trim().filter { ch -> ch.isDigit() }.toLongOrNull() }
-            ?.filter { it > 0L }
-            ?: return "prix illisibles"
-        if (costs.isEmpty()) return "prix non détectés"
-        val affordable = costs.filter { it <= coins }
-        return if (affordable.isEmpty()) {
-            "aucune pour l'instant"
-        } else {
-            "${affordable.minOrNull()} pièces (clic désactivé pour le test)"
+        val costs = costsText.split(",")
+        return buildString {
+            append("Cartes village (gauche → droite) :\\n")
+            costs.forEachIndexed { index, raw ->
+                val cost = raw.trim().filter { it.isDigit() }.toLongOrNull()
+                append("Carte ${index + 1} : ")
+                append(if (cost == null || raw.trim() == "-1") "prix illisible" else formatCoins(cost))
+                append("\\n")
+            }
+            val affordable = costs.mapIndexedNotNull { index, raw ->
+                val cost = raw.trim().filter { it.isDigit() }.toLongOrNull()
+                if (cost != null && raw.trim() != "-1" && coins != null && cost <= coins) index + 1 else null
+            }
+            append("Abordables : ")
+            append(if (coins == null) "solde illisible" else if (affordable.isEmpty()) "aucune" else affordable.joinToString(", ") { "carte $it" })
+            append("\\n")
         }
+    }
+
+    private fun formatCoins(value: Long): String = when {
+        value >= 1_000_000_000L -> "%.2f Md".format(value / 1_000_000_000.0)
+        value >= 1_000_000L -> "%.2f M".format(value / 1_000_000.0)
+        else -> value.toString()
     }
 
     private fun finishAnalysis(message: String, buttonText: String) {
