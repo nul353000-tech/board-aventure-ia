@@ -71,9 +71,16 @@ class OpenRouterVision {
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
-        val payload = JSONObject().put("model", effectiveModel).put("temperature", 0.1)
+        // Keep every fallback on a free, image-capable model. OpenRouter
+        // advances to the next model when the upstream provider returns 429.
+        // No paid model is included, so fallback cannot silently incur charges.
+        val fallbackModels = org.json.JSONArray()
+            .put(effectiveModel)
+            .put("google/gemma-4-31b-it:free")
+            .put("inclusionai/ling-3.2-flash:free")
+            .put("particle-ai/particle-1:free")
+        val payload = JSONObject().put("models", fallbackModels).put("temperature", 0.1)
             .put("max_tokens", 1200)
-            .put("response_format", JSONObject().put("type", "json_object"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
