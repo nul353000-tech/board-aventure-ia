@@ -6,7 +6,7 @@ import org.junit.Test
 
 class ResourceStrategyTest {
     @Test fun startsAutoOnlyWhenResourcesAreReadableAndAboveReserve() {
-        val plan = ResourceStrategy.plan(true, 0.99, "364267595", "120/120", "+3155", "x2", "ready", "90000000,125000000,150000000")
+        val plan = ResourceStrategy.plan(true, 0.99, "364267595", "120/120", "+0", "x2", "ready", "90000000,125000000,150000000")
         assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, plan.spinCommand)
         assertEquals(listOf(1, 2, 3), plan.affordableCards)
         assertEquals(1, plan.suggestedCard)
