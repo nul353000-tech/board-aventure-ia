@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var bonusReserve: SeekBar
     private lateinit var coinReserve: SeekBar
     private lateinit var reserveSummary: TextView
+    private lateinit var fallbackOpenRouter: CheckBox
+    private lateinit var fallbackGemini: CheckBox
+    private lateinit var fallbackGroq: CheckBox
 
     private val providers = listOf("OpenRouter", "Google Gemini", "Groq")
     private val providerIds = listOf("openrouter", "gemini", "groq")
@@ -44,8 +48,8 @@ class MainActivity : ComponentActivity() {
             "inclusionai/ling-3.2-flash:free",
             "dots-studio/dots-3-note-preview:free"
         ),
-        "gemini" to listOf("gemini-2.5-flash"),
-        "groq" to listOf("qwen/qwen3.6-27b")
+        "gemini" to listOf("gemini-2.5-flash-lite", "gemini-2.5-flash"),
+        "groq" to listOf("qwen/qwen3.8-27b")
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,14 +165,14 @@ class MainActivity : ComponentActivity() {
         aiCard.addView(heading("Modèle vision", 14f))
         model = spinner(models[store.provider()] ?: models["openrouter"]!!)
         aiCard.addView(model)
-        model.setSelection((models[store.provider()] ?: models["openrouter"]!!).indexOf(store.model()).coerceAtLeast(0))
+        model.setSelection((models[store.provider()] ?: models["openrouter"]!!).indexOf(store.providerModel(store.provider(), (models[store.provider()] ?: models["openrouter"]!!).first())).coerceAtLeast(0))
         provider.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val idValue = providerIds[position]
                 val options = models[idValue] ?: models["openrouter"]!!
                 model.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, options)
-                val saved = if (idValue == "openrouter") store.model() else options.first()
+                val saved = store.providerModel(idValue, options.first())
                 model.setSelection(options.indexOf(saved).coerceAtLeast(0))
             }
         }
@@ -191,6 +195,15 @@ class MainActivity : ComponentActivity() {
         addGap(keysCard, 4)
         groqKey = field("Clé Groq · laisser vide pour conserver")
         keysCard.addView(groqKey)
+        addGap(keysCard, 12)
+        keysCard.addView(heading("Fournisseurs autorisés en secours", 14f))
+        keysCard.addView(body("Coche plusieurs fournisseurs. Si le quota est atteint, l’application essaie le suivant sans passer sur une offre payante."))
+        fallbackOpenRouter = CheckBox(this).apply { text = "OpenRouter · modèles gratuits uniquement"; setTextColor(Color.WHITE); isChecked = "openrouter" in store.fallbackProviders() }
+        fallbackGemini = CheckBox(this).apply { text = "Google Gemini · quota gratuit"; setTextColor(Color.WHITE); isChecked = "gemini" in store.fallbackProviders() }
+        fallbackGroq = CheckBox(this).apply { text = "Groq · quota gratuit"; setTextColor(Color.WHITE); isChecked = "groq" in store.fallbackProviders() }
+        keysCard.addView(fallbackOpenRouter)
+        keysCard.addView(fallbackGemini)
+        keysCard.addView(fallbackGroq)
 
         val reserveCard = addSection(root, "3. Réserves de sécurité", "Réglages modifiables. Valeurs initiales prudentes : 20 énergie, 5 tours bonus et 10 % des pièces protégées.")
         fun addReserve(label: String, max: Int, initial: Int): SeekBar {
@@ -270,7 +283,14 @@ class MainActivity : ComponentActivity() {
         if (geminiKey.text.isNotBlank()) store.saveProviderKey("gemini", geminiKey.text.toString().trim())
         if (groqKey.text.isNotBlank()) store.saveProviderKey("groq", groqKey.text.toString().trim())
         store.saveProvider(selectedProvider)
-        if (selectedProvider == "openrouter") store.saveModel(selectedModel)
+        store.saveProviderModel(selectedProvider, selectedModel)
+        val enabledFallbacks = buildSet {
+            if (fallbackOpenRouter.isChecked) add("openrouter")
+            if (fallbackGemini.isChecked) add("gemini")
+            if (fallbackGroq.isChecked) add("groq")
+        }
+        if (enabledFallbacks.isEmpty()) { status.text = "Active au moins un fournisseur de secours."; return }
+        store.saveFallbackProviders(enabledFallbacks)
         store.saveRiskSettings(energyReserve.progress.toLong(), bonusReserve.progress.toLong(), coinReserve.progress.toLong())
         openRouterKey.text.clear()
         geminiKey.text.clear()
