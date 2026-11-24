@@ -14,6 +14,7 @@ object ResourceStrategy {
     data class Plan(
         val spinCommand: SpinCommand,
         val multiplier: Int?,
+        val recommendedMultiplier: Int,
         val affordableCards: List<Int>,
         val suggestedCard: Int?,
         val coinReserve: Long?,
@@ -49,7 +50,8 @@ object ResourceStrategy {
         } else emptyList()
         // Keep the largest remaining balance: among visible affordable cards,
         // suggest the cheapest one. No assumption is made about hidden rewards.
-        val suggested = affordable.minByOrNull { costs[it - 1] ?: Long.MAX_VALUE }
+        // Village completion requires upgrading every building. Preserve visible left-to-right order.
+        val suggested = affordable.firstOrNull()
 
         val command = when (spinState?.lowercase()) {
             "auto_active" -> when {
@@ -77,8 +79,11 @@ object ResourceStrategy {
             append(totalEnergy?.toString() ?: "inconnu")
             append(" · réserve normale: ")
             append(DEFAULT_ENERGY_RESERVE)
-            append(". Multiplicateur détecté: x")
-            append(multiplier ?: DEFAULT_MULTIPLIER)
+            append(". Multiplicateur affiché: x")
+            append(multiplier ?: "illisible")
+            append(". Multiplicateur recommandé: x")
+            append(DEFAULT_MULTIPLIER)
+            append(" (choix prudent : rendement par énergie non mesuré).")
             append(". Réserve pièces: ")
             append(reserve?.toString() ?: "inconnue")
             append(". ")
@@ -86,11 +91,11 @@ object ResourceStrategy {
             append(" Plan uniquement: aucun geste ni dépense exécuté.")
         }
 
-        return Plan(command, multiplier, affordable, suggested, reserve, explanation)
+        return Plan(command, multiplier, DEFAULT_MULTIPLIER, affordable, suggested, reserve, explanation)
     }
 
     private fun blocked(reason: String) = Plan(
-        SpinCommand.BLOCKED, null, emptyList(), null, null,
+        SpinCommand.BLOCKED, null, DEFAULT_MULTIPLIER, emptyList(), null, null,
         "$reason Toutes les actions restent bloquées."
     )
 
