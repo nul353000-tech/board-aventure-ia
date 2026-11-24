@@ -93,6 +93,7 @@ class GameAssistService : AccessibilityService() {
         if (isWindowTransition) {
             val activePackage = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
             if (activePackage != null && activePackage != ActionPolicy.TARGET_PACKAGE) {
+                if (autoWatchdogArmed) stopAutoFromWatchdog("Jeu quitté")
                 lastForegroundPackage = activePackage
                 autoAnalysisStartedForSession = false
                 mainHandler.removeCallbacks(autoAnalysisRunnable)
@@ -193,7 +194,7 @@ class GameAssistService : AccessibilityService() {
                 statusView?.text = if (ok) "$reason · STOP envoyé, vérification obligatoire…" else "$reason · échec du STOP, reprise interdite"
                 if (ok) {
                     mainHandler.postDelayed({
-                        if (isGameVisible() && !analyzing) analyzeCurrentScreen()
+                        if (isGameForeground() && !analyzing) analyzeCurrentScreen()
                         else statusView?.text = "STOP envoyé · jeu indisponible, aucune reprise"
                     }, POST_GESTURE_VERIFY_MS)
                 }
@@ -606,7 +607,7 @@ class GameAssistService : AccessibilityService() {
         val point = ActionPolicy.controlPreview("spin", metrics.widthPixels, metrics.heightPixels)
             ?: return "bloqué : format écran différent des captures"
         val decision = ActionPolicy.validate(
-            foregroundPackage = ActionPolicy.TARGET_PACKAGE,
+            foregroundPackage = rootInActiveWindow?.packageName?.toString(),
             recognized = true,
             confidence = confidence,
             action = "spin",
@@ -627,7 +628,7 @@ class GameAssistService : AccessibilityService() {
                 if (autoWatchdogArmed) return "AUTO déjà surveillé"
                 GameGestureController.hold(this, target, durationMs = 1_200L, authorized = decision.allowed) { ok ->
                     mainHandler.post {
-                        if (ok && isGameVisible()) armAutoWatchdog()
+                        if (ok && isGameForeground()) armAutoWatchdog()
                         else statusView?.text = "AUTO non démarré ou interrompu · aucun redémarrage"
                     }
                 }
