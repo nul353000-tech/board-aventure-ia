@@ -4,9 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ResourceStrategyTest {
-    @Test fun startsAutoOnlyWhenResourcesAreReadableAndAboveReserve() {
+    @Test fun waitsInsteadOfStartingUnsupervisedAutoWhenResourcesAreHigh() {
         val plan = ResourceStrategy.plan(true, 0.99, "364267595", "120/120", "+0", "x2", "ready", "90000000,125000000,150000000")
-        assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, plan.spinCommand)
+        assertEquals(ResourceStrategy.SpinCommand.WAIT, plan.spinCommand)
         assertEquals(listOf(1, 2, 3), plan.affordableCards)
         assertEquals(1, plan.suggestedCard)
     }
@@ -54,9 +54,9 @@ class ResourceStrategyTest {
         assertEquals(ResourceStrategy.SpinCommand.TAP_SINGLE, plan.spinCommand)
     }
 
-    @Test fun choosesAutoOnlyWithComfortableNormalEnergyAndNoBonus() {
+    @Test fun doesNotStartAutoWithoutLiveWatchdog() {
         val plan = ResourceStrategy.plan(true, 0.99, "100000000", "60/120", "+0", "x2", "ready", null)
-        assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, plan.spinCommand)
+        assertEquals(ResourceStrategy.SpinCommand.WAIT, plan.spinCommand)
     }
 
     @Test fun blocksWhenBonusEnergyCannotBeRead() {
