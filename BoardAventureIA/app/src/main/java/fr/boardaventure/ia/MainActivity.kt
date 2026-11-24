@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -30,6 +31,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var groqKey: EditText
     private lateinit var status: TextView
     private lateinit var summary: TextView
+    private lateinit var energyReserve: SeekBar
+    private lateinit var bonusReserve: SeekBar
+    private lateinit var coinReserve: SeekBar
+    private lateinit var reserveSummary: TextView
 
     private val providers = listOf("OpenRouter", "Google Gemini", "Groq")
     private val providerIds = listOf("openrouter", "gemini", "groq")
@@ -187,7 +192,31 @@ class MainActivity : ComponentActivity() {
         groqKey = field("Clé Groq · laisser vide pour conserver")
         keysCard.addView(groqKey)
 
-        val actions = addSection(root, "3. Démarrage")
+        val reserveCard = addSection(root, "3. Réserves de sécurité", "Réglages modifiables. Valeurs initiales prudentes : 20 énergie, 5 tours bonus et 10 % des pièces protégées.")
+        fun addReserve(label: String, max: Int, initial: Int): SeekBar {
+            reserveCard.addView(heading(label, 14f))
+            val bar = SeekBar(this).apply {
+                this.max = max
+                progress = initial
+                minimumHeight = dp(48)
+            }
+            reserveCard.addView(bar)
+            return bar
+        }
+        energyReserve = addReserve("Réserve énergie normale", 100, store.energyReserve().toInt())
+        bonusReserve = addReserve("Réserve tours bonus", 50, store.bonusReserve().toInt())
+        coinReserve = addReserve("Réserve pièces (%)", 30, store.coinReservePercent().toInt())
+        reserveSummary = body("")
+        reserveCard.addView(reserveSummary)
+        val updateReserveText = {
+            reserveSummary.text = "Énergie : ${energyReserve.progress} · Bonus : ${bonusReserve.progress} · Pièces : ${coinReserve.progress}%"
+        }
+        energyReserve.setOnSeekBarChangeListener(reserveListener { updateReserveText() })
+        bonusReserve.setOnSeekBarChangeListener(reserveListener { updateReserveText() })
+        coinReserve.setOnSeekBarChangeListener(reserveListener { updateReserveText() })
+        updateReserveText()
+
+        val actions = addSection(root, "4. Démarrage")
         actions.addView(Button(this).apply {
             text = "ENREGISTRER LES PARAMÈTRES"
             textSize = 14f
@@ -224,6 +253,12 @@ class MainActivity : ComponentActivity() {
         refreshStatus()
     }
 
+    private fun reserveListener(onChanged: () -> Unit) = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = onChanged()
+        override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+        override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+    }
+
     private fun saveSettings() {
         val selectedProvider = providerIds[provider.selectedItemPosition.coerceIn(providerIds.indices)]
         val selectedModel = model.selectedItem?.toString().orEmpty()
@@ -236,6 +271,7 @@ class MainActivity : ComponentActivity() {
         if (groqKey.text.isNotBlank()) store.saveProviderKey("groq", groqKey.text.toString().trim())
         store.saveProvider(selectedProvider)
         if (selectedProvider == "openrouter") store.saveModel(selectedModel)
+        store.saveRiskSettings(energyReserve.progress.toLong(), bonusReserve.progress.toLong(), coinReserve.progress.toLong())
         openRouterKey.text.clear()
         geminiKey.text.clear()
         groqKey.text.clear()
@@ -251,6 +287,7 @@ class MainActivity : ComponentActivity() {
             if (!store.providerKey("groq").isNullOrBlank()) add("Groq")
         }
         status.text = if (configured.isEmpty()) "Aucun fournisseur configuré" else "Fournisseurs prêts : " + configured.joinToString(" · ")
+        if (::reserveSummary.isInitialized) reserveSummary.text = "Énergie : ${store.energyReserve()} · Bonus : ${store.bonusReserve()} · Pièces : ${store.coinReservePercent()}%"
         summary.text = "Préféré : ${providerIds.firstOrNull { it == store.provider() } ?: "openrouter"} · " +
             if (isAccessibilityServiceEnabled()) "Service Android actif" else "Service Android à activer"
     }
