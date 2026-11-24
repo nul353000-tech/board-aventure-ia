@@ -43,6 +43,13 @@ class OpenRouterVision {
             "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
             "Tours, bonus, pièces et gemmes peuvent monter ou baisser ; étoiles seulement augmenter. " +
+            "Repères visuels issus des captures réelles du téléphone en portrait (684x1536, coordonnées proportionnelles): " +
+            "pièces en haut à gauche, environ x=8-36% et y=7-12%; gemmes dans la barre supérieure juste à droite des pièces, " +
+            "environ x=36-60% et y=7-12%; énergie en bas au centre, x=32-68% et y=92-97%; bonus d'énergie sous cette barre, " +
+            "x=38-63% et y=97-100%; multiplicateur de lancer en bas à droite près du gros bouton rouge, x=68-85% et y=84-90%; " +
+            "compteur bonus visible près de la progression supérieure, x=65-78% et y=22-28%. " +
+            "Les étoiles et les tours principaux peuvent être hors champ ou masqués: retourne null si leur nombre n'est pas lisible. " +
+            "Un panneau flottant peut cacher la barre supérieure: ne devine jamais les chiffres cachés. " +
             "Ne propose jamais d'achat en argent réel. Ignore la date et l'heure. Ne fournis aucune coordonnée non vérifiable."
         val userPrompt = "Règles: réserve de 5 tours, limite de lancers=all, arrêt=both. " +
             "Gemmes gagnées utilisables uniquement si cela améliore clairement la progression. " +
