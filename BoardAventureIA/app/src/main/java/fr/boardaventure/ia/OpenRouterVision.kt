@@ -30,7 +30,33 @@ class OpenRouterVision {
         .readTimeout(50, TimeUnit.SECONDS)
         .build()
 
-    suspend fun analyze(apiKey: String, model: String, bitmap: Bitmap): GameAnalysis = withContext(Dispatchers.IO) {
+    suspend fun analyze(store: SecureStore, bitmap: Bitmap): GameAnalysis {
+        val preferred = store.provider().lowercase()
+        val order = (listOf(preferred) + listOf("openrouter", "gemini", "groq")).distinct()
+        val failures = mutableListOf<String>()
+        for (provider in order) {
+            val key = when (provider) {
+                "openrouter" -> store.apiKey()
+                "gemini", "groq" -> store.providerKey(provider)
+                else -> null
+            }?.takeIf { it.isNotBlank() } ?: continue
+            val model = when (provider) {
+                "openrouter" -> store.model()
+                "gemini" -> "gemini-2.5-flash"
+                "groq" -> "qwen/qwen3.6-27b"
+                else -> continue
+            }
+            try {
+                return analyzeSingle(provider, key, model, bitmap)
+            } catch (error: Exception) {
+                failures += "$provider: ${error.message ?: error.javaClass.simpleName}"
+            }
+        }
+        val details = failures.joinToString(" | ").take(700)
+        error(if (details.isBlank()) "Aucun fournisseur IA configuré. Ajoute une clé OpenRouter, Gemini ou Groq." else "Tous les fournisseurs IA ont échoué. $details")
+    }
+
+    private suspend fun analyzeSingle(provider: String, apiKey: String, model: String, bitmap: Bitmap): GameAnalysis = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "Clé OpenRouter manquante." }
         require(model.isNotBlank()) { "Identifiant du modèle vision manquant." }
         // The free router may select a reasoning-heavy provider that exhausts the
@@ -39,10 +65,14 @@ class OpenRouterVision {
         // Strict free-only policy: never send a model without the :free suffix.
         // Generic aliases and previously saved paid model IDs fall back to Gemma Free.
         val requestedModel = model.trim()
-        val effectiveModel = when {
-            requestedModel == "openrouter/free" || requestedModel.startsWith("google/") -> "nvidia/nemotron-3.5-super-vl:free"
-            requestedModel.endsWith(":free") -> requestedModel
-            else -> "nvidia/nemotron-3.5-super-vl:free"
+        val effectiveModel = when (provider) {
+            "groq" -> "qwen/qwen3.6-27b"
+            "gemini" -> "gemini-2.5-flash"
+            else -> when {
+                requestedModel == "openrouter/free" || requestedModel.startsWith("google/") -> "nvidia/nemotron-3.5-super-vl:free"
+                requestedModel.endsWith(":free") -> requestedModel
+                else -> "nvidia/nemotron-3.5-super-vl:free"
+            }
         }
         require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Capture d’écran invalide ou déjà libérée." }
         val stream = ByteArrayOutputStream()
@@ -88,31 +118,40 @@ class OpenRouterVision {
             .put(effectiveModel)
             .put("inclusionai/ling-3.2-flash:free")
             .put("dots-studio/dots-3-note-preview:free")
-        val payload = JSONObject().put("models", fallbackModels).put("temperature", 0.1)
+        val payload = JSONObject().put("temperature", 0.1)
             .put("max_tokens", 1600)
             .put("reasoning", JSONObject().put("effort", "none"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
-        val request = Request.Builder().url("https://openrouter.ai/api/v1/chat/completions")
-            .header("Authorization", "Bearer $apiKey").header("Content-Type", "application/json")
-            .header("X-Title", "Board Aventure IA")
+        if (provider == "openrouter") payload.put("models", fallbackModels)
+        else payload.put("model", effectiveModel)
+        val endpoint = when (provider) {
+            "groq" -> "https://api.groq.com/openai/v1/chat/completions"
+            "gemini" -> "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            else -> "https://openrouter.ai/api/v1/chat/completions"
+        }
+        val requestBuilder = Request.Builder().url(endpoint)
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+        if (provider == "openrouter") requestBuilder.header("X-Title", "Board Aventure IA")
+        val request = requestBuilder
             .post(payload.toString().toRequestBody("application/json".toMediaType())).build()
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) error("OpenRouter HTTP ${response.code}: ${body.take(350)}")
+            if (!response.isSuccessful) error("$provider HTTP ${response.code}: ${body.take(350)}")
             val root = try { JSONObject(body) } catch (e: Exception) {
-                error("Réponse OpenRouter non JSON : ${body.take(300)}")
+                error("Réponse $provider non JSON : ${body.take(300)}")
             }
             root.optJSONObject("error")?.let { apiError ->
-                error("OpenRouter : ${apiError.optString("message", "erreur API")} (code ${apiError.opt("code") ?: "inconnu"})")
+                error("$provider : ${apiError.optString("message", "erreur API")} (code ${apiError.opt("code") ?: "inconnu"})")
             }
             val choices = root.optJSONArray("choices")
-                ?: error("Réponse OpenRouter sans choices. Modèle demandé : $effectiveModel. Réponse : ${body.take(300)}")
+                ?: error("Réponse $provider sans choices. Modèle : $effectiveModel. Réponse : ${body.take(300)}")
             if (choices.length() == 0) error("OpenRouter n'a renvoyé aucun résultat.")
-            val choice = choices.optJSONObject(0) ?: error("Premier choix OpenRouter vide.")
-            val message = choice.optJSONObject("message") ?: error("Message OpenRouter absent.")
+            val choice = choices.optJSONObject(0) ?: error("Premier choix $provider vide.")
+            val message = choice.optJSONObject("message") ?: error("Message $provider absent.")
             val value = message.opt("content")
             val raw = when (value) {
                 is String -> value.trim()
