@@ -50,10 +50,14 @@ object ActionPolicy {
         "MULTIPLIER", 535f/684f, 1335f/1536f,
         465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f
     )
-    // False until real SPIN / STOP / village hitboxes are tested on Pixel 10a.
-    // Screenshot coordinates alone are not device calibration.
-    const val DEVICE_GESTURE_CALIBRATION_CONFIRMED = false
-    private val calibratedHitboxes: Map<ZoneId, Hitbox> = emptyMap()
+    // Coordinates explicitly supplied and confirmed by the player from game screenshots.
+    // Normalized to the reference frame; aspect-ratio validation remains mandatory.
+    const val DEVICE_GESTURE_CALIBRATION_CONFIRMED = true
+    private val calibratedHitboxes: Map<ZoneId, Hitbox> = mapOf(
+        ZoneId.SPIN to Hitbox(ZoneId.SPIN, 220f/684f, 1208f/1536f, 466f/684f, 1415f/1536f, true),
+        ZoneId.MULTIPLIER to Hitbox(ZoneId.MULTIPLIER, 465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f, true),
+        ZoneId.VILLAGE_UPGRADE to Hitbox(ZoneId.VILLAGE_UPGRADE, 7f/684f, 1446f/1536f, 682f/684f, 1527f/1536f, true)
+    )
 
     fun controlPreview(name: String, screenWidth: Int, screenHeight: Int): Pair<Int, Int>? {
         if (screenWidth <= 1 || screenHeight <= 1) return null
@@ -99,13 +103,15 @@ object ActionPolicy {
         }
         val zone = when (action) {
             "spin" -> ZoneId.SPIN
+            "set_multiplier" -> ZoneId.MULTIPLIER
             "collect_free_reward" -> ZoneId.FREE_REWARD
             "upgrade_village" -> ZoneId.VILLAGE_UPGRADE
             "none" -> return Decision(false, "Aucune action demandée.")
             else -> return Decision(false, "Action non autorisée.")
         }
-        if (screenWidth <= 1 || screenHeight <= 1 || x == null || y == null ||
-            x !in 0 until screenWidth || y !in 0 until screenHeight) {
+        if (screenWidth <= 1 || screenHeight <= 1 ||
+            kotlin.math.abs(screenWidth.toFloat() / screenHeight - 684f / 1536f) > 0.015f ||
+            x == null || y == null || x !in 0 until screenWidth || y !in 0 until screenHeight) {
             return Decision(false, "Coordonnées absentes, dimensions invalides ou coordonnées hors écran.")
         }
         val hitbox = calibratedHitboxes[zone]
@@ -118,6 +124,6 @@ object ActionPolicy {
         if (nx !in hitbox.left..hitbox.right || ny !in hitbox.top..hitbox.bottom) {
             return Decision(false, "Coordonnées hors de la zone calibrée ${zone.name}.")
         }
-        return Decision(false, "Validation tactile réelle encore requise avant activation.")
+        return Decision(true, "Zone ${zone.name} autorisée : application, confiance, format écran et coordonnées vérifiés.")
     }
 }
