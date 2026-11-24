@@ -481,7 +481,10 @@ class GameAssistService : AccessibilityService() {
                     energyBonusText = analysis.energyBonus,
                     multiplierText = analysis.multiplier,
                     spinState = analysis.spinState,
-                    villageCostsText = analysis.villageUpgradeCosts
+                    villageCostsText = analysis.villageUpgradeCosts,
+                    energyReserve = store.energyReserve(),
+                    bonusReserve = store.bonusReserve(),
+                    coinReservePercent = store.coinReservePercent()
                 )
                 val goalReached = ResourceStrategy.isProgressGoalReached(analysis.progression)
                 val multiplierStatus = if (recognized && !goalReached) dispatchPlannedMultiplier(analysis.multiplier, analysis.confidence) else null
