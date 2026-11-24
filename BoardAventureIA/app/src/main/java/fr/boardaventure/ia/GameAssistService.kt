@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Display
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -32,6 +33,10 @@ class GameAssistService : AccessibilityService() {
     private var analyzeButton: TextView? = null
     private var statusView: TextView? = null
     private var resultView: TextView? = null
+    private var dragStartRawX = 0f
+    private var dragStartRawY = 0f
+    private var dragStartX = 0
+    private var dragStartY = 0
     private var analyzing = false
     private var lastForegroundPackage = "Application en attente"
     private var discoveryAttempts = 0
@@ -134,6 +139,14 @@ class GameAssistService : AccessibilityService() {
             }
             elevation = 12f
         }
+        val dragHandle = TextView(this).apply {
+            text = "☷  MAINTENIR POUR DÉPLACER"
+            textSize = 10f
+            setTextColor(Color.rgb(190, 210, 235))
+            gravity = Gravity.CENTER
+            setPadding(12, 8, 12, 8)
+            isFocusable = false
+        }
         val button = TextView(this).apply {
             text = "BOARD IA · ANALYSER"
             textSize = 14f
@@ -159,6 +172,7 @@ class GameAssistService : AccessibilityService() {
             setPadding(3, 5, 3, 2)
             visibility = View.GONE
         }
+        root.addView(dragHandle)
         root.addView(button)
         root.addView(status)
         root.addView(result)
@@ -173,6 +187,25 @@ class GameAssistService : AccessibilityService() {
             gravity = Gravity.TOP or Gravity.END
             x = 12
             y = 180
+        }
+        dragHandle.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    dragStartRawX = event.rawX
+                    dragStartRawY = event.rawY
+                    dragStartX = params.x
+                    dragStartY = params.y
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = (dragStartX - (event.rawX - dragStartRawX).toInt()).coerceAtLeast(0)
+                    params.y = (dragStartY + (event.rawY - dragStartRawY).toInt()).coerceAtLeast(0)
+                    runCatching { windowManager?.updateViewLayout(root, params) }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> true
+                else -> false
+            }
         }
         try {
             windowManager?.addView(root, params)
