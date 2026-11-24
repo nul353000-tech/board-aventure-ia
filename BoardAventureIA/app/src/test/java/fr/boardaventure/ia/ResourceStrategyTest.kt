@@ -12,6 +12,15 @@ class ResourceStrategyTest {
         assertEquals(1, plan.suggestedCard)
     }
 
+    @Test fun recommendsSafeMultiplierUntilRewardEfficiencyIsMeasured() {
+        val x2 = ResourceStrategy.plan(true, 0.99, "500000000", "120/120", "+0", "x2", "ready", null)
+        val x5 = ResourceStrategy.plan(true, 0.99, "500000000", "120/120", "+0", "x5", "ready", null)
+        assertEquals(1, x2.recommendedMultiplier)
+        assertEquals(1, x5.recommendedMultiplier)
+        assertEquals(2, x2.multiplier)
+        assertEquals(5, x5.multiplier)
+    }
+
     @Test fun stopsAutoAtEnergyReserve() {
         val plan = ResourceStrategy.plan(true, 0.99, "100000000", "10/120", "+0", "x1", "auto_active", "90000000")
         assertEquals(ResourceStrategy.SpinCommand.TAP_STOP, plan.spinCommand)
