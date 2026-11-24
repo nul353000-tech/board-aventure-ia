@@ -21,17 +21,25 @@ class SecureStore(context: Context) {
             .setRandomizedEncryptionRequired(true).build())
         return gen.generateKey()
     }
-    fun saveApiKey(value: String) {
-        if (value.isBlank()) { prefs.edit().remove("key").apply(); return }
-        val c = Cipher.getInstance("AES/GCM/NoPadding"); c.init(Cipher.ENCRYPT_MODE, key())
-        prefs.edit().putString("key", Base64.encodeToString(c.iv + c.doFinal(value.toByteArray()), Base64.NO_WRAP)).apply()
+    private fun saveSecret(name: String, value: String) {
+        if (value.isBlank()) { prefs.edit().remove(name).apply(); return }
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, key())
+        prefs.edit().putString(name, Base64.encodeToString(c.iv + c.doFinal(value.toByteArray()), Base64.NO_WRAP)).apply()
     }
-    fun apiKey(): String? = runCatching {
-        val b = Base64.decode(prefs.getString("key", null) ?: return null, Base64.NO_WRAP)
+    private fun readSecret(name: String): String? = runCatching {
+        val b = Base64.decode(prefs.getString(name, null) ?: return null, Base64.NO_WRAP)
+        require(b.size > 12) { "Secret chiffré invalide" }
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, b.copyOfRange(0, 12)))
         String(c.doFinal(b.copyOfRange(12, b.size)))
     }.getOrNull()
+    fun saveApiKey(value: String) = saveSecret("key", value)
+    fun apiKey(): String? = readSecret("key")
+    fun saveProviderKey(provider: String, value: String) = saveSecret(provider.lowercase() + "_key", value)
+    fun providerKey(provider: String): String? = readSecret(provider.lowercase() + "_key")
+    fun saveProvider(value: String) { prefs.edit().putString("provider", value).apply() }
+    fun provider(): String = prefs.getString("provider", "openrouter") ?: "openrouter"
     fun saveModel(v: String) = prefs.edit().putString("model", v).apply()
     fun model() = prefs.getString("model", "nvidia/nemotron-3.5-super-vl:free") ?: "nvidia/nemotron-3.5-super-vl:free"
 }
