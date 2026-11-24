@@ -1,0 +1,37 @@
+package fr.boardaventure.ia
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ResourceStrategyTest {
+    @Test fun startsAutoOnlyWhenResourcesAreReadableAndAboveReserve() {
+        val plan = ResourceStrategy.plan(true, 0.99, "364267595", "120/120", "+3155", "x2", "ready", "90000000,125000000,150000000")
+        assertEquals(ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO, plan.spinCommand)
+        assertEquals(listOf(1, 2, 3), plan.affordableCards)
+        assertEquals(1, plan.suggestedCard)
+    }
+
+    @Test fun stopsAutoAtEnergyReserve() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "10/120", "+0", "x1", "auto_active", "90000000")
+        assertEquals(ResourceStrategy.SpinCommand.TAP_STOP, plan.spinCommand)
+    }
+
+    @Test fun blocksWhenEnergyOrRecognitionIsUncertain() {
+        val noEnergy = ResourceStrategy.plan(true, 0.99, "100000000", null, "+100", "x1", "ready", "90000000")
+        assertEquals(ResourceStrategy.SpinCommand.BLOCKED, noEnergy.spinCommand)
+        val unrecognized = ResourceStrategy.plan(false, 0.99, "100000000", "120/120", "+100", "x1", "ready", "90000000")
+        assertEquals(ResourceStrategy.SpinCommand.BLOCKED, unrecognized.spinCommand)
+    }
+
+    @Test fun neverTreatsGemsAsCoinsAndKeepsCoinReserve() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+100", "x1", "ready", "95000000,85000000")
+        assertTrue(plan.affordableCards.isEmpty())
+        assertEquals(null, plan.suggestedCard)
+    }
+
+    @Test fun unknownSpinStateBlocksGesture() {
+        val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+100", "x1", "unknown", "90000000")
+        assertEquals(ResourceStrategy.SpinCommand.BLOCKED, plan.spinCommand)
+    }
+}
