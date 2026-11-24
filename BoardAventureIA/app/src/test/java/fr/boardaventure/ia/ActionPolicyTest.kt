@@ -73,4 +73,14 @@ class ActionPolicyTest {
         val outOfBounds = ActionPolicy.Hitbox(ActionPolicy.ZoneId.SPIN, -0.1f, 0f, 0.5f, 0.5f, true)
         assertFalse(outOfBounds.isValid())
     }
+    @Test fun spinAndMultiplierTargetsArePreviewOnlyOnReferenceAspectRatio() {
+        val spin = ActionPolicy.controlPreview("spin", 684, 1536)
+        val multiplier = ActionPolicy.controlPreview("multiplier", 684, 1536)
+        assertTrue(spin != null)
+        assertTrue(multiplier != null)
+        assertTrue(spin!!.first < multiplier!!.first)
+        assertTrue(ActionPolicy.controlPreview("spin", 1080, 2400) == null)
+        assertTrue(ActionPolicy.controlPreview("unknown", 684, 1536) == null)
+    }
+
 }
