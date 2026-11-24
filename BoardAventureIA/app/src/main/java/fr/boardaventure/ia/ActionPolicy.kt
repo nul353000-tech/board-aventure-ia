@@ -55,7 +55,7 @@ object ActionPolicy {
     const val DEVICE_GESTURE_CALIBRATION_CONFIRMED = true
     private val calibratedHitboxes: Map<ZoneId, Hitbox> = mapOf(
         ZoneId.SPIN to Hitbox(ZoneId.SPIN, 220f/684f, 1208f/1536f, 466f/684f, 1415f/1536f, true),
-        ZoneId.MULTIPLIER to Hitbox(ZoneId.MULTIPLIER, 465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f, true),
+        ZoneId.MULTIPLIER to Hitbox(ZoneId.MULTIPLIER, 465f/684f, 1285f/1536f, 609f/684f, 1385f/1536f, false),
         ZoneId.VILLAGE_UPGRADE to Hitbox(ZoneId.VILLAGE_UPGRADE, 7f/684f, 1446f/1536f, 682f/684f, 1527f/1536f, true)
     )
 
