@@ -90,7 +90,8 @@ object ResourceStrategy {
             append(reserve?.toString() ?: "inconnue")
             append(". ")
             append(if (suggested == null) "Aucune carte achetable avec la réserve." else "Carte village conseillée: $suggested.")
-            append(" Plan uniquement: aucun geste ni dépense exécuté.")
+            append(" AUTO non démarré: surveillance continue et arrêt de sécurité pas encore armés.")
+            append(" Les achats, gemmes et paiements restent interdits.")
         }
 
         return Plan(command, multiplier, DEFAULT_MULTIPLIER, affordable, suggested, reserve, explanation)
