@@ -279,17 +279,17 @@ class MainActivity : ComponentActivity() {
             status.text = "Sélectionne un modèle vision."
             return
         }
-        if (openRouterKey.text.isNotBlank()) store.saveApiKey(openRouterKey.text.toString().trim())
-        if (geminiKey.text.isNotBlank()) store.saveProviderKey("gemini", geminiKey.text.toString().trim())
-        if (groqKey.text.isNotBlank()) store.saveProviderKey("groq", groqKey.text.toString().trim())
-        store.saveProvider(selectedProvider)
-        store.saveProviderModel(selectedProvider, selectedModel)
         val enabledFallbacks = buildSet {
             if (fallbackOpenRouter.isChecked) add("openrouter")
             if (fallbackGemini.isChecked) add("gemini")
             if (fallbackGroq.isChecked) add("groq")
         }
         if (enabledFallbacks.isEmpty()) { status.text = "Active au moins un fournisseur de secours."; return }
+        if (openRouterKey.text.isNotBlank()) store.saveApiKey(openRouterKey.text.toString().trim())
+        if (geminiKey.text.isNotBlank()) store.saveProviderKey("gemini", geminiKey.text.toString().trim())
+        if (groqKey.text.isNotBlank()) store.saveProviderKey("groq", groqKey.text.toString().trim())
+        store.saveProvider(selectedProvider)
+        store.saveProviderModel(selectedProvider, selectedModel)
         store.saveFallbackProviders(enabledFallbacks)
         store.saveRiskSettings(energyReserve.progress.toLong(), bonusReserve.progress.toLong(), coinReserve.progress.toLong())
         openRouterKey.text.clear()
