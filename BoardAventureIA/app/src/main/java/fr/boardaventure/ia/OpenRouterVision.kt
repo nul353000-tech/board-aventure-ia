@@ -120,12 +120,13 @@ class OpenRouterVision {
             .put("dots-studio/dots-3-note-preview:free")
         val payload = JSONObject().put("temperature", 0.1)
             .put("max_tokens", 1600)
-            .put("reasoning", JSONObject().put("effort", "none"))
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
-        if (provider == "openrouter") payload.put("models", fallbackModels)
-        else payload.put("model", effectiveModel)
+        if (provider == "openrouter") {
+            payload.put("models", fallbackModels)
+            payload.put("reasoning", JSONObject().put("effort", "none"))
+        } else payload.put("model", effectiveModel)
         val endpoint = when (provider) {
             "groq" -> "https://api.groq.com/openai/v1/chat/completions"
             "gemini" -> "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
