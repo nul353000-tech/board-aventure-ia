@@ -47,7 +47,6 @@ class GameAssistService : AccessibilityService() {
     private var discoveryAttempts = 0
     private var autoAnalysisStartedForSession = false
     private var autoWatchdogArmed = false
-    private var multiplierAdjustmentAttempts = 0
     private var lastVillageCoinsBeforeTap: Long? = null
 
     // Safe UI-only automation: collapse the panel after 30 seconds without interaction.
@@ -102,6 +101,10 @@ class GameAssistService : AccessibilityService() {
         }
     }
 
+    private fun isGameForeground(): Boolean = runCatching {
+        rootInActiveWindow?.packageName?.toString() == ActionPolicy.TARGET_PACKAGE
+    }.getOrDefault(false)
+
     private fun isGameVisible(): Boolean {
         val active = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
         if (active == ActionPolicy.TARGET_PACKAGE) return true
@@ -143,7 +146,7 @@ class GameAssistService : AccessibilityService() {
     // Automatic first-stage feature: analyse once when the game opens.
     // No game taps, spending, or purchases are performed.
     private val autoAnalysisRunnable = Runnable {
-        if (isGameVisible() && !analyzing) analyzeCurrentScreen()
+        if (isGameForeground() && !analyzing) analyzeCurrentScreen()
     }
 
     private fun startAutomaticInitialAnalysis() {
@@ -169,7 +172,7 @@ class GameAssistService : AccessibilityService() {
     private fun stopAutoFromWatchdog(reason: String) {
         if (!autoWatchdogArmed) return
         mainHandler.removeCallbacks(autoWatchdogRunnable)
-        if (!isGameVisible()) {
+        if (!isGameForeground()) {
             autoWatchdogArmed = false
             statusView?.text = "$reason · jeu hors premier plan, aucune reprise automatique"
             autoAnalysisStartedForSession = false
@@ -536,35 +539,10 @@ class GameAssistService : AccessibilityService() {
 
 
     private fun dispatchPlannedMultiplier(multiplierText: String?, confidence: Double): String? {
-        val value = multiplierText?.trim()?.lowercase()?.removePrefix("x")?.toIntOrNull()
-            ?: return "multiplicateur inchangé : valeur illisible"
-        if (value == ResourceStrategy.DEFAULT_MULTIPLIER) {
-            multiplierAdjustmentAttempts = 0
-            return null
-        }
-        if (multiplierAdjustmentAttempts >= MAX_MULTIPLIER_STEPS) {
-            multiplierAdjustmentAttempts = 0
-            return "multiplicateur en pause : x1 non retrouvé après $MAX_MULTIPLIER_STEPS étapes"
-        }
-        if (!isGameVisible()) return "multiplicateur en pause : jeu non visible"
-        val metrics = resources.displayMetrics
-        val point = ActionPolicy.controlPreview("multiplier", metrics.widthPixels, metrics.heightPixels)
-            ?: return "multiplicateur en pause : écran non calibré"
-        val decision = ActionPolicy.validate(ActionPolicy.TARGET_PACKAGE, true, confidence, "set_multiplier", point.first, point.second, metrics.widthPixels, metrics.heightPixels)
-        if (!decision.allowed) return "multiplicateur en pause : ${decision.explanation}"
-        multiplierAdjustmentAttempts++
-        GameGestureController.tap(this, GameGestureController.Target(point.first.toFloat(), point.second.toFloat()), decision.allowed) { ok ->
-            mainHandler.post {
-                if (ok) {
-                    statusView?.text = "Multiplicateur modifié une étape · lecture de contrôle…"
-                    mainHandler.postDelayed({ if (isGameVisible() && !analyzing) analyzeCurrentScreen() }, POST_GESTURE_VERIFY_MS)
-                } else {
-                    multiplierAdjustmentAttempts = 0
-                    statusView?.text = "Multiplicateur : geste refusé, aucune autre étape"
-                }
-            }
-        }
-        return "une étape de multiplicateur envoyée; nouvelle lecture obligatoire avant toute autre étape"
+        // The game exposes a cycling multiplier control, not a direct value selector.
+        // Vision disagreed with the visible x3 button on the supplied screenshot.
+        // Never tap this control automatically until an independent read is available.
+        return null
     }
 
     private fun dispatchPlannedVillageUpgrade(
@@ -576,6 +554,7 @@ class GameAssistService : AccessibilityService() {
         confidence: Double
     ): String? {
         if (screen?.contains("village", ignoreCase = true) != true) return null
+        if (!isGameForeground()) return "village en pause : jeu non au premier plan"
         if (damagedBuildings != false) return "village en pause : état des bâtiments endommagés inconnu ou réparation nécessaire"
         val costs = costsText?.split(",") ?: return "village en pause : les cinq prix ne sont pas lisibles"
         if (costs.size != 5 || costs.any { it.trim().isEmpty() || it.trim() == "-1" }) {
@@ -589,11 +568,11 @@ class GameAssistService : AccessibilityService() {
             return "village en pause : baisse des pièces non confirmée après la dernière carte"
         }
         val card = suggestedCard ?: return "village en pause : aucune carte abordable après réserve de pièces"
-        if (card !in 1..5 || !isGameVisible()) return "village en pause : carte ou application non valide"
+        if (card !in 1..5 || !isGameForeground()) return "village en pause : carte ou application non valide"
         val metrics = resources.displayMetrics
         val decision = ActionPolicy.validateVillageCard(
             number = card,
-            foregroundPackage = ActionPolicy.TARGET_PACKAGE,
+            foregroundPackage = rootInActiveWindow?.packageName?.toString(),
             recognized = true,
             confidence = confidence,
             screenWidth = metrics.widthPixels,
@@ -622,7 +601,7 @@ class GameAssistService : AccessibilityService() {
 
     private fun dispatchPlannedSpin(command: ResourceStrategy.SpinCommand, confidence: Double): String {
         if (!ActionPolicy.DEVICE_GESTURE_CALIBRATION_CONFIRMED) return "bloqué : zones non confirmées"
-        if (!isGameVisible()) return "bloqué : jeu non visible"
+        if (!isGameForeground()) return "bloqué : Board Aventure n'est pas au premier plan"
         val metrics = resources.displayMetrics
         val point = ActionPolicy.controlPreview("spin", metrics.widthPixels, metrics.heightPixels)
             ?: return "bloqué : format écran différent des captures"
