@@ -32,9 +32,14 @@ class OpenRouterVision {
         // The free router may select a reasoning-heavy provider that exhausts the
         // completion budget before returning the JSON. Pin the generic free alias
         // to a known free image+text model instead of allowing random routing.
-        val effectiveModel = if (model.trim() == "openrouter/free") {
-            "google/gemma-4-26b-a4b-it:free"
-        } else model.trim()
+        // Strict free-only policy: never send a model without the :free suffix.
+        // Generic aliases and previously saved paid model IDs fall back to Gemma Free.
+        val requestedModel = model.trim()
+        val effectiveModel = when {
+            requestedModel == "openrouter/free" -> "google/gemma-4-26b-a4b-it:free"
+            requestedModel.endsWith(":free") -> requestedModel
+            else -> "google/gemma-4-26b-a4b-it:free"
+        }
         require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Capture d’écran invalide ou déjà libérée." }
         val stream = ByteArrayOutputStream()
         check(bitmap.compress(Bitmap.CompressFormat.JPEG, 82, stream)) { "Compression de la capture impossible." }
