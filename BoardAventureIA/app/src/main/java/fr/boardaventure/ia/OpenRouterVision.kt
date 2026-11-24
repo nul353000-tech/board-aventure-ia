@@ -29,6 +29,12 @@ class OpenRouterVision {
     suspend fun analyze(apiKey: String, model: String, bitmap: Bitmap): GameAnalysis = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "Clé OpenRouter manquante." }
         require(model.isNotBlank()) { "Identifiant du modèle vision manquant." }
+        // The free router may select a reasoning-heavy provider that exhausts the
+        // completion budget before returning the JSON. Pin the generic free alias
+        // to a known free image+text model instead of allowing random routing.
+        val effectiveModel = if (model.trim() == "openrouter/free") {
+            "google/gemma-4-26b-a4b-it:free"
+        } else model.trim()
         require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Capture d’écran invalide ou déjà libérée." }
         val stream = ByteArrayOutputStream()
         check(bitmap.compress(Bitmap.CompressFormat.JPEG, 82, stream)) { "Compression de la capture impossible." }
@@ -65,9 +71,8 @@ class OpenRouterVision {
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
-        val payload = JSONObject().put("model", model).put("temperature", 0.1)
-            .put("max_tokens", 4096)
-            .put("reasoning", JSONObject().put("effort", "none"))
+        val payload = JSONObject().put("model", effectiveModel).put("temperature", 0.1)
+            .put("max_tokens", 1200)
             .put("messages", org.json.JSONArray()
                 .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
@@ -86,7 +91,7 @@ class OpenRouterVision {
                 error("OpenRouter : ${apiError.optString("message", "erreur API")} (code ${apiError.opt("code") ?: "inconnu"})")
             }
             val choices = root.optJSONArray("choices")
-                ?: error("Réponse OpenRouter sans choices. Modèle demandé : $model. Réponse : ${body.take(300)}")
+                ?: error("Réponse OpenRouter sans choices. Modèle demandé : $effectiveModel. Réponse : ${body.take(300)}")
             if (choices.length() == 0) error("OpenRouter n'a renvoyé aucun résultat.")
             val choice = choices.optJSONObject(0) ?: error("Premier choix OpenRouter vide.")
             val message = choice.optJSONObject("message") ?: error("Message OpenRouter absent.")
@@ -109,7 +114,7 @@ class OpenRouterVision {
                 val nativeFinish = choice.optString("native_finish_reason", "")
                 val refusalValue = message.opt("refusal")
                 val refusal = if (refusalValue is String) refusalValue else ""
-                val returnedModel = root.optString("model", model)
+                val returnedModel = root.optString("model", effectiveModel)
                 val diagnostic = when {
                     refusal.isNotBlank() -> "Refus du modèle : ${refusal.take(180)}"
                     finish == "length" -> "Réponse coupée par la limite de tokens."
