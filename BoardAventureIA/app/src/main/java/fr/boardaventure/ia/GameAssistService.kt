@@ -48,6 +48,7 @@ class GameAssistService : AccessibilityService() {
     private var autoAnalysisStartedForSession = false
     private var autoWatchdogArmed = false
     private var multiplierAdjustmentAttempts = 0
+    private var lastVillageCoinsBeforeTap: Long? = null
 
     // Safe UI-only automation: collapse the panel after 30 seconds without interaction.
     private val idleCollapseRunnable = Runnable {
@@ -486,6 +487,7 @@ class GameAssistService : AccessibilityService() {
                     screen = analysis.screen,
                     damagedBuildings = analysis.damagedBuildings,
                     costsText = analysis.villageUpgradeCosts,
+                    coinsText = analysis.coins,
                     suggestedCard = plan.suggestedCard,
                     confidence = analysis.confidence
                 ) else null
@@ -569,6 +571,7 @@ class GameAssistService : AccessibilityService() {
         screen: String?,
         damagedBuildings: Boolean?,
         costsText: String?,
+        coinsText: String?,
         suggestedCard: Int?,
         confidence: Double
     ): String? {
@@ -577,6 +580,13 @@ class GameAssistService : AccessibilityService() {
         val costs = costsText?.split(",") ?: return "village en pause : les cinq prix ne sont pas lisibles"
         if (costs.size != 5 || costs.any { it.trim().isEmpty() || it.trim() == "-1" }) {
             return "village en pause : il faut lire les cinq prix actuels"
+        }
+        val currentCoins = coinsText?.filter { it.isDigit() }?.toLongOrNull()
+            ?: return "village en pause : solde de pièces illisible"
+        val previousCoins = lastVillageCoinsBeforeTap
+        if (previousCoins != null && currentCoins >= previousCoins) {
+            lastVillageCoinsBeforeTap = null
+            return "village en pause : baisse des pièces non confirmée après la dernière carte"
         }
         val card = suggestedCard ?: return "village en pause : aucune carte abordable après réserve de pièces"
         if (card !in 1..5 || !isGameVisible()) return "village en pause : carte ou application non valide"
@@ -592,17 +602,22 @@ class GameAssistService : AccessibilityService() {
         if (!decision.allowed) return "village en pause : ${decision.explanation}"
         val point = ActionPolicy.villageCardPreview(card, metrics.widthPixels, metrics.heightPixels)
             ?: return "village en pause : coordonnées indisponibles"
+        lastVillageCoinsBeforeTap = currentCoins
         GameGestureController.tap(
             this,
             GameGestureController.Target(point.first.toFloat(), point.second.toFloat()),
             authorized = decision.allowed
         ) { ok ->
             mainHandler.post {
-                statusView?.text = if (ok) "Carte village $card sélectionnée — nouvelle analyse nécessaire"
-                else "Geste village refusé ou annulé"
+                statusView?.text = if (ok) "Carte village $card sélectionnée — contrôle des pièces…"
+                else "Geste village refusé ou annulé · séquence arrêtée"
+                if (ok) mainHandler.postDelayed({
+                    if (isGameVisible() && !analyzing) analyzeCurrentScreen()
+                    else statusView?.text = "Village en pause · jeu indisponible"
+                }, POST_GESTURE_VERIFY_MS)
             }
         }
-        return "carte village $card sélectionnée; une seule action, nouvelle lecture requise avant la suivante"
+        return "carte village $card sélectionnée; nouvelle capture et contrôle du débit avant toute carte suivante"
     }
 
     private fun dispatchPlannedSpin(command: ResourceStrategy.SpinCommand, confidence: Double): String {
