@@ -462,18 +462,15 @@ class GameAssistService : AccessibilityService() {
         scope.launch {
             try {
                 val store = SecureStore(this@GameAssistService)
-                val apiKey = store.apiKey()
-                if (apiKey.isNullOrBlank()) {
-                    finishAnalysis("Clé OpenRouter absente. Enregistre-la dans l'application.", "CLÉ ABSENTE")
+                val hasProviderKey = !store.apiKey().isNullOrBlank() ||
+                    !store.providerKey("gemini").isNullOrBlank() ||
+                    !store.providerKey("groq").isNullOrBlank()
+                if (!hasProviderKey) {
+                    finishAnalysis("Aucune clé IA enregistrée. Configure OpenRouter, Gemini ou Groq dans l'application.", "CONFIGURER IA")
                     return@launch
                 }
-                val model = store.model().trim()
-                if (model.isBlank()) {
-                    finishAnalysis("Identifiant du modèle vision manquant.", "MODÈLE ABSENT")
-                    return@launch
-                }
-                statusView?.text = "Analyse OpenRouter en cours…"
-                val analysis = OpenRouterVision().analyze(apiKey, model, bitmap)
+                statusView?.text = "Analyse IA · bascule automatique si quota atteint…"
+                val analysis = OpenRouterVision().analyze(store, bitmap)
                 val recognized = analysis.recognized &&
                     analysis.confidence >= ActionPolicy.MIN_CONFIDENCE
                 val plan = ResourceStrategy.plan(
