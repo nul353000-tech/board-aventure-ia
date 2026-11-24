@@ -48,9 +48,9 @@ object ResourceStrategy {
                 if (cost != null && cost >= 0 && cost <= coins - reserve) index + 1 else null
             }
         } else emptyList()
-        // Keep the largest remaining balance: among visible affordable cards,
-        // suggest the cheapest one. No assumption is made about hidden rewards.
-        // Village completion requires upgrading every building. Preserve visible left-to-right order.
+        // The game requires every building to be completed. Without reliable per-building
+        // level/damage/event data, suggest only the first visible affordable card for review;
+        // never infer that this single purchase completes the village.
         val suggested = affordable.firstOrNull()
 
         val command = when (spinState?.lowercase()) {
