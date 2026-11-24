@@ -78,7 +78,6 @@ class OpenRouterVision {
             .put(effectiveModel)
             .put("google/gemma-4-31b-it:free")
             .put("inclusionai/ling-3.2-flash:free")
-            .put("particle-ai/particle-1:free")
         val payload = JSONObject().put("models", fallbackModels).put("temperature", 0.1)
             .put("max_tokens", 1200)
             .put("messages", org.json.JSONArray()
