@@ -421,6 +421,16 @@ class GameAssistService : AccessibilityService() {
                 val analysis = OpenRouterVision().analyze(apiKey, model, bitmap)
                 val recognized = analysis.recognized &&
                     analysis.confidence >= ActionPolicy.MIN_CONFIDENCE
+                val plan = ResourceStrategy.plan(
+                    recognized = recognized,
+                    confidence = analysis.confidence,
+                    coinsText = analysis.coins,
+                    energyText = analysis.energy,
+                    energyBonusText = analysis.energyBonus,
+                    multiplierText = analysis.multiplier,
+                    spinState = analysis.spinState,
+                    villageCostsText = analysis.villageUpgradeCosts
+                )
                 val details = if (!recognized) {
                     "Jeu non confirmé (confiance ${(analysis.confidence * 100).toInt()} %).\n" +
                         "Écran identifié : ${analysis.screen}\nMotif : ${analysis.reason}\nAucune action effectuée."
@@ -433,7 +443,11 @@ class GameAssistService : AccessibilityService() {
                         "Bonus d'énergie : ${analysis.energyBonus ?: "illisible"}\n" +
                         "Multiplicateur : ${analysis.multiplier ?: "illisible"}\n" +
                         "Mode de lancer : ${spinStateLabel(analysis.spinState)}\n" +
-                        "Conseil : ${analysis.recommendation}\n" +
+                        "Cartes abordables : ${plan.affordableCards.joinToString().ifBlank { "aucune confirmée" }}\n" +
+                        "Carte conseillée : ${plan.suggestedCard?.let { "n°$it" } ?: "aucune"}\n" +
+                        "Règle lancers : ${plan.spinCommand}\n" +
+                        "Plan ressources : ${plan.explanation}\n" +
+                        "Conseil IA : ${analysis.recommendation}\n" +
                         "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
                 }
                 resultView?.text = details
