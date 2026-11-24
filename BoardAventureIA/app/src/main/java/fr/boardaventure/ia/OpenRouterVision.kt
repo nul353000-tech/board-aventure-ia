@@ -16,7 +16,11 @@ data class GameAnalysis(
     val recognized: Boolean, val confidence: Double, 
     val coins: String?, val gems: String?, val stars: String?, val energy: String?,
     val energyBonus: String?, val multiplier: String?, val spinState: String?, val villageUpgradeCosts: String?, val screen: String, val recommendation: String, val action: String,
-    val x: Int?, val y: Int?, val reason: String
+    val x: Int?, val y: Int?, val reason: String,
+    val damagedBuildings: Boolean? = null, val freeRewardAvailable: Boolean? = null,
+    val villageManiaActive: Boolean? = null, val villageMasterActive: Boolean? = null,
+    val buildRushActive: Boolean? = null, val shieldCount: String? = null,
+    val activeEvents: String? = null
 )
 
 class OpenRouterVision {
@@ -51,7 +55,8 @@ class OpenRouterVision {
             "Analyse uniquement ce qui est visible, sans inventer. Réponds en JSON strict avec recognized(boolean), " +
             "confidence(number 0..1), screen(string), coins(string|null), " +
             "gems(string|null), stars(string|null), energy(string|null), energy_bonus(string|null), multiplier(string|null), spin_state(ready|auto_active|unknown), village_upgrade_costs(string|null), recommendation(string), " +
-            "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string). " +
+            "action('none'|'spin'|'collect_free_reward'|'upgrade_village'), x(integer|null), y(integer|null), reason(string), " +
+            "damaged_buildings(boolean|null), free_reward_available(boolean|null), village_mania_active(boolean|null), village_master_active(boolean|null), build_rush_active(boolean|null), shield_count(string|null), active_events(string|null). " +
             "Si le jeu n'est pas clairement reconnu: recognized=false et action=none. Valeur illisible=null. " +
             "Tours, bonus, pièces et gemmes peuvent monter ou baisser ; étoiles seulement augmenter. " +
             "Repères visuels issus des captures réelles du téléphone en portrait (684x1536, coordonnées proportionnelles): " +
@@ -72,7 +77,7 @@ class OpenRouterVision {
             "bonus d'énergie, pièces, gemmes, multiplicateur et les prix des cartes du village. Les cartes du village sont reconnaissables à leur bande verte avec icône de pièce et prix; le mot « améliorer » n'est pas nécessaire. Les prix peuvent changer et le nombre de cartes aussi: lis les valeurs de la capture actuelle, de gauche à droite, converties en pièces entières (90M devient 90000000). Mets -1 pour un prix de carte illisible, null s'il n'y a aucune carte visible. " +
             "" +
             "" +
-            "Détecte aussi si le bouton central est prêt à lancer ou affiche STOP en cours. Réponds avec un JSON compact, sans explication, exactement selon le schéma."
+            "Détecte aussi si le bouton central est prêt à lancer ou affiche STOP en cours, les bâtiments endommagés, les récompenses gratuites disponibles, les boucliers et les événements actifs. N’inclus jamais une offre payante comme récompense gratuite. Réponds avec un JSON compact, sans explication, exactement selon le schéma."
         val content = org.json.JSONArray()
             .put(JSONObject().put("type", "text").put("text", userPrompt))
             .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$image")))
@@ -170,11 +175,18 @@ class OpenRouterVision {
             if (action !in setOf("none", "spin", "collect_free_reward", "upgrade_village")) {
                 error("Action IA inconnue : $action")
             }
+            fun boolField(key: String): Boolean? {
+                if (!json.has(key) || json.isNull(key)) return null
+                return json.opt(key) as? Boolean ?: error("Champ $key invalide : booléen attendu.")
+            }
             GameAnalysis(
-                recognized, confidence, 
+                recognized, confidence,
                 textField("coins"), textField("gems"), textField("stars"), textField("energy"), textField("energy_bonus"), textField("multiplier"), textField("spin_state"), textField("village_upgrade_costs"),
                 textField("screen") ?: "inconnu", textField("recommendation") ?: "", action,
-                intField("x"), intField("y"), textField("reason") ?: ""
+                intField("x"), intField("y"), textField("reason") ?: "",
+                boolField("damaged_buildings"), boolField("free_reward_available"),
+                boolField("village_mania_active"), boolField("village_master_active"),
+                boolField("build_rush_active"), textField("shield_count"), textField("active_events")
             )
         }
     }
