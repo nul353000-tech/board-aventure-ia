@@ -48,6 +48,21 @@ class SecureStore(context: Context) {
             .putLong("bonus_reserve", bonus.coerceIn(0L, 50L))
             .putLong("coin_reserve_percent", coins.coerceIn(0L, 30L)).apply()
     }
-    fun saveModel(v: String) = prefs.edit().putString("model", v).apply()
-    fun model() = prefs.getString("model", "nvidia/nemotron-3.5-super-vl:free") ?: "nvidia/nemotron-3.5-super-vl:free"
+    fun saveModel(v: String) = saveProviderModel("openrouter", v)
+    fun model() = providerModel("openrouter", "nvidia/nemotron-3.5-super-vl:free")
+    fun saveProviderModel(provider: String, value: String) {
+        prefs.edit().putString(provider.lowercase() + "_model", value.trim()).apply()
+    }
+    fun providerModel(provider: String, defaultValue: String): String =
+        prefs.getString(provider.lowercase() + "_model", defaultValue) ?: defaultValue
+    fun saveFallbackProviders(values: Set<String>) {
+        val safe = values.map { it.lowercase() }.filter { it in setOf("openrouter", "gemini", "groq") }.toSet()
+        prefs.edit().putString("fallback_providers", safe.joinToString(",")).apply()
+    }
+    fun fallbackProviders(): Set<String> {
+        val raw = prefs.getString("fallback_providers", null)
+        return raw?.split(",")?.map { it.trim().lowercase() }?.filter {
+            it in setOf("openrouter", "gemini", "groq")
+        }?.toSet() ?: setOf("openrouter", "gemini", "groq")
+    }
 }

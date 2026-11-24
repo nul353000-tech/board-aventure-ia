@@ -32,7 +32,8 @@ class OpenRouterVision {
 
     suspend fun analyze(store: SecureStore, bitmap: Bitmap): GameAnalysis {
         val preferred = store.provider().lowercase()
-        val order = (listOf(preferred) + listOf("openrouter", "gemini", "groq")).distinct()
+        val enabled = store.fallbackProviders()
+        val order = (listOf(preferred) + listOf("openrouter", "gemini", "groq").filter { it in enabled }).distinct()
         val failures = mutableListOf<String>()
         for (provider in order) {
             val key = when (provider) {
@@ -42,8 +43,8 @@ class OpenRouterVision {
             }?.takeIf { it.isNotBlank() } ?: continue
             val model = when (provider) {
                 "openrouter" -> store.model()
-                "gemini" -> "gemini-2.5-flash"
-                "groq" -> "qwen/qwen3.6-27b"
+                "gemini" -> store.providerModel("gemini", "gemini-2.5-flash-lite")
+                "groq" -> store.providerModel("groq", "qwen/qwen3.8-27b")
                 else -> continue
             }
             try {
@@ -66,8 +67,8 @@ class OpenRouterVision {
         // Generic aliases and previously saved paid model IDs fall back to Gemma Free.
         val requestedModel = model.trim()
         val effectiveModel = when (provider) {
-            "groq" -> "qwen/qwen3.6-27b"
-            "gemini" -> "gemini-2.5-flash"
+            "groq" -> model
+            "gemini" -> model
             else -> when {
                 requestedModel == "openrouter/free" || requestedModel.startsWith("google/") -> "nvidia/nemotron-3.5-super-vl:free"
                 requestedModel.endsWith(":free") -> requestedModel
@@ -141,7 +142,16 @@ class OpenRouterVision {
 
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) error("$provider HTTP ${response.code}: ${body.take(350)}")
+            if (!response.isSuccessful) {
+                val category = when (response.code) {
+                    401, 403 -> "clé refusée ou accès non autorisé"
+                    402 -> "crédit ou quota gratuit épuisé"
+                    408, 425, 429 -> "quota atteint ou service temporairement limité"
+                    in 500..599 -> "service momentanément indisponible"
+                    else -> "requête refusée"
+                }
+                error("$provider HTTP ${response.code} ($category): ${body.take(250)}")
+            }
             val root = try { JSONObject(body) } catch (e: Exception) {
                 error("Réponse $provider non JSON : ${body.take(300)}")
             }

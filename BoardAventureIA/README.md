@@ -5,8 +5,11 @@ Application Android Kotlin destinée exclusivement au jeu Board Aventure (packag
 ## Fonctionnalités présentes dans le code
 - Service Android AccessibilityService pour détection de l'application au premier plan.
 - Panneau flottant d'analyse.
-- Capture d'écran et envoi d'image à OpenRouter Vision.
-- Clé OpenRouter chiffrée avec Android Keystore.
+- Capture d'écran et analyse multimodale via OpenRouter, Google Gemini ou Groq.
+- Bascule automatique vers les fournisseurs de secours cochés en cas de quota, erreur réseau, modèle indisponible ou réponse invalide.
+- Modèles vision configurables par fournisseur; les modèles OpenRouter sont limités aux identifiants `:free`.
+- Clés API chiffrées avec Android Keystore.
+- Réglages simplifiés des fournisseurs préférés, modèles et fournisseurs de secours.
 - Champs de lecture : tours, tours bonus, pièces, gemmes, étoiles et multiplicateur.
 - Réserve stratégique de 5 tours documentée dans le prompt.
 - Les clics et dépenses automatiques sont désactivés.
@@ -32,3 +35,7 @@ Le workflow GitHub Actions construit l'APK debug, crée une clé de signature pe
 
 ## Sécurité
 Aucun achat en argent réel ni aucune dépense automatique ne doit être exécuté. Les coordonnées tactiles ne doivent pas être activées avant calibration et validation humaine sur les écrans réels.
+
+## Fournisseurs IA gratuits
+
+Consulte [`docs/AI_PROVIDERS.md`](../docs/AI_PROVIDERS.md) pour les modèles vision validés, les quotas gratuits, la configuration des clés et les limites de facturation. Les quotas sont variables et les comptes API avec facturation activée peuvent être facturés au-delà des limites gratuites; désactive la facturation si tu veux une utilisation sans frais.
