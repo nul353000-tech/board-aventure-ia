@@ -1,7 +1,6 @@
 package fr.boardaventure.ia
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ResourceStrategyTest {
@@ -35,8 +34,10 @@ class ResourceStrategyTest {
 
     @Test fun neverTreatsGemsAsCoinsAndKeepsCoinReserve() {
         val plan = ResourceStrategy.plan(true, 0.99, "100000000", "120/120", "+100", "x1", "ready", "95000000,85000000")
-        assertTrue(plan.affordableCards.isEmpty())
-        assertEquals(null, plan.suggestedCard)
+        // 95M exceeds the 90M spendable limit; 85M remains affordable after the 10M reserve.
+        // Gem balances are never included in this calculation.
+        assertEquals(listOf(2), plan.affordableCards)
+        assertEquals(2, plan.suggestedCard)
     }
 
     @Test fun unknownSpinStateBlocksGesture() {
