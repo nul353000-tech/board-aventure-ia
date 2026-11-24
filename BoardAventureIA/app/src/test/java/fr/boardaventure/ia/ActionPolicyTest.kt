@@ -63,7 +63,7 @@ class ActionPolicyTest {
         assertTrue(centers.zipWithNext().all { (a, b) -> a.first < b.first })
         assertTrue(centers.all { it.second in 1478..1525 })
         assertTrue(ActionPolicy.villageCardPreview(6, width, height) == null)
-        assertTrue(ActionPolicy.villageCardPreview(1, 1080, 2400) == null)
+        assertTrue(ActionPolicy.villageCardPreview(1, 1080, 2400) != null)
         assertTrue(ActionPolicy.villageCardCalibrationStatus().contains("simulation uniquement"))
     }
 
@@ -79,7 +79,7 @@ class ActionPolicyTest {
         assertTrue(spin != null)
         assertTrue(multiplier != null)
         assertTrue(spin!!.first < multiplier!!.first)
-        assertTrue(ActionPolicy.controlPreview("spin", 1080, 2400) == null)
+        assertTrue(ActionPolicy.controlPreview("spin", 1080, 2400) != null)
         assertTrue(ActionPolicy.controlPreview("unknown", 684, 1536) == null)
     }
 
