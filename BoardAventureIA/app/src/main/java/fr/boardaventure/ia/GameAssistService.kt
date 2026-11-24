@@ -457,7 +457,7 @@ class GameAssistService : AccessibilityService() {
                         "Geste automatique : $gestureStatus\n" +
                         "Plan ressources : ${plan.explanation}\n" +
                         "Conseil IA : ${analysis.recommendation}\n" +
-                        "Action proposée : ${analysis.action}\nAucun clic ni dépense exécuté."
+                        "Action proposée : ${analysis.action}\nAchats, gemmes et paiements automatiques désactivés."
                 }
                 resultView?.text = details
                 resultView?.visibility = View.VISIBLE
@@ -497,10 +497,8 @@ class GameAssistService : AccessibilityService() {
         when (command) {
             ResourceStrategy.SpinCommand.TAP_SINGLE, ResourceStrategy.SpinCommand.TAP_STOP ->
                 GameGestureController.tap(this, target, decision.allowed, completion)
-            ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO -> {
-                // One verified spin only; AUTO stays off until a live resource watchdog exists.
-                GameGestureController.tap(this, target, authorized = decision.allowed, callback = completion)
-            }
+            ResourceStrategy.SpinCommand.HOLD_TO_START_AUTO ->
+                return "AUTO bloqué : surveillance continue et arrêt de sécurité non armés"
             ResourceStrategy.SpinCommand.WAIT -> return "attente : ressources surveillées"
             ResourceStrategy.SpinCommand.BLOCKED -> return "bloqué : données insuffisantes"
         }
