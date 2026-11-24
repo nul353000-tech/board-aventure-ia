@@ -22,6 +22,13 @@ object ResourceStrategy {
         val explanation: String
     )
 
+    fun isProgressGoalReached(value: String?): Boolean {
+        val match = Regex("(\\\\d{1,4})\\\\s*/\\\\s*(\\\\d{1,4})").find(value.orEmpty()) ?: return false
+        val current = match.groupValues[1].toIntOrNull() ?: return false
+        val target = match.groupValues[2].toIntOrNull() ?: return false
+        return current >= 725 && target == 725
+    }
+
     fun plan(
         recognized: Boolean,
         confidence: Double,
